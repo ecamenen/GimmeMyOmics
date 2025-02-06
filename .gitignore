@@ -7,3 +7,6 @@
 dev/
 inst/extdata/
 *.Rproj
+inst/doc
+/doc/
+/Meta/

@@ -1,0 +1,24 @@
+---
+title: "Differential expression analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Differential expression analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+set.seed(123)
+library(GimmeMyOmics)
+```
+
+```{r}
+sessionInfo()
+```
