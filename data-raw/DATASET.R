@@ -8,3 +8,26 @@ colnames(gene_counts)[2:15] <- id
 
 tnbc_neutrophils <- list(gene_counts = gene_counts, metadata = metadata)
 use_data(tnbc_neutrophils, overwrite = TRUE)
+
+
+genome_species <- c("hsapiens", "mmusculus")
+genome_version <- 113
+
+biomart_annotation <- map(
+    genome_species,
+    ~ {
+    db_annot <- useEnsembl(
+        biomart = "genes",
+        dataset = paste0(., "_gene_ensembl"),
+        version = genome_version
+    )
+
+    getBM(
+        attributes = c("ensembl_gene_id", "external_gene_name", "description", "chromosome_name","start_position", "end_position", "gene_biotype"),
+        mart = db_annot
+    ) %>%
+        as_tibble()
+}) %>%
+    set_names(paste(genome_species, genome_version, sep = "_"))
+
+use_data(biomart_annotation, overwrite = TRUE)
