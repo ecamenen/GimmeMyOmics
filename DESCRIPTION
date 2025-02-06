@@ -3,14 +3,48 @@ Title: Omics data analysis
 Version: 0.1
 Authors@R: 
     person("Etienne", "Camenen", email = "etienne.camenen@gmail.com", role = c("aut", "cre"))
-Description: GimmeMyOmics provides specialized tools for analyzing bulk RNA-seq, single-cell RNA-seq, and ATAC-seq (peak calling, chromatin accessibility analysis). It includes methods for differential expression, gene set enrichment, over-representation analysis for pathway enrichment, network analysis (gene co-expression, pathway graph) and single-cell workflows (clustering, trajectory inference, cell-type annotation). It also provides a set of tools for data visualization (e.g. volcano plots, heatmaps, UMAP plots and violin plots). The package is built on top of popular R packages (e.g. Seurat, DESeq2, clusterProfiler).
+Description: GimmeMyOmics is an integrated R package for high-throughput omics analysis, covering bulk RNA-seq, single-cell RNA-seq, and ATAC-seq. It provides streamlined workflows for differential expression analysis, functional enrichment, and network-based annotation. Designed for both bulk and single-cell data, it supports clustering, trajectory inference, and cell-type annotation while enabling chromatin accessibility studies through peak calling and regulatory element analysis. The package also offers quality control and preprocessing tools, converting kallisto.h5 outputs into transcript- and gene-level count matrices, assessing alignment quality, and extracting fastqc and fastp metrics with detailed visual summaries. Its visualization suite generates publication-ready volcano plots, heatmaps, UMAP projections, violin plots, and pathway graphs, facilitating data exploration. Built on standard R packages like Seurat, DESeq2, and clusterProfiler, GimmeMyOmics simplifies multi-omics workflows, making complex bioinformatics analyses more efficient, reproducible, and accessible.
 License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
 Imports: 
-    magrittr
-Suggests: 
+    AnnotationHub,
+    biomaRt,
+    clusterProfiler,
+    clustree,
+    ComplexHeatmap,
+    cowplot,
+    DESeq2,
+    e1071,
+    enrichplot,
+    GenomicRanges,
+    ggplot2,
+    ggrepel,
+    GimmeMyCluster,
+    GimmeMyPlot,
+    irlba,
+    janitor,
+    kableExtra,
+    magrittr,
+    org.Hs.eg.db,
+    RColorBrewer,
+    reshape,
+    rlist,
+    rstatix,
+    scales,
+    Seurat,
+    Signac,
+    stringi,
+    tximport
+Suggests:
+    Glimma,
+    org.Mm.eg.db,
+    knitr,
+    rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 LazyData: false
+VignetteBuilder: knitr
+Depends: 
+    tidyverse
