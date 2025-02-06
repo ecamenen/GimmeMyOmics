@@ -1,8 +1,8 @@
 default:
-  golem_name: doobi1124
+  golem_name: GimmeMyOmics
   golem_version: 0.1.0
   app_prod: no
 production:
   app_prod: yes
 dev:
-  golem_wd: /home/etienne/bin/doobi1124
+  golem_wd: !expr here::here()
