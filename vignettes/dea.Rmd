@@ -16,7 +16,348 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 set.seed(123)
-library(GimmeMyOmics)
+library("GimmeMyPlot")
+source("R/utils_theme.R")
+source("R/utils_bulk.R")
+source("R/utils_enrich.R")
+# org <- "org.Hs.eg.db"
+org <- "org.Mm.eg.db"
+library(org, character.only = TRUE)
+```
+
+```{r, message = FALSE}
+project_name <- "_jcbories_0225"
+path <- file.path("/shared", "projects", "immunaid", "data", "jcbories")
+path_quant <- file.path(path, "quant")
+data_path <- paste0("/shared/projects/immunaid/data/jcbories/")
+
+metadata_samples <- read_tsv(file.path(data_path, "design.txt")) %>% 
+  select(-3) %>% 
+  separate(col = `Sample name`, into = c("condition", "kit"), sep = " ") %>%
+  mutate(
+    name = str_remove_all(condition, "ch"),
+    condition = str_remove_all(name, "\\d*"),
+    kit = str_remove_all(kit, "Kit")
+) %>% 
+  column_to_rownames("Sample ID")
+
+metadata_samples <- metadata_samples %>%
+    group_by(condition) %>%
+    mutate(ind = match(name, unique(name))) %>%
+    ungroup() %>%
+    mutate(group = paste0(.$condition, .$kit)) %>%
+    mutate(across(everything(), as.factor)) %>%
+    as.data.frame() %>%
+    set_rownames(rownames(metadata_samples))
+
+metadata_samples$condition <- relevel(metadata_samples$condition, ref = "WT")
+metadata_samples$kit <- relevel(metadata_samples$kit, ref = "Pos")
+metadata_samples$group <- relevel(metadata_samples$group, ref = "KOPos")
+```
+
+```{r}
+gene_count_raw <- read_tsv(file.path(path_quant, "gene_counts.tsv")) %>%
+  rename(ensembl_gene_id = "gene_id")
+```
+
+```{r, message = FALSE, eval = FALSE}
+raw_data <- read_tsv(file.path(data_path, "count_matrix.txt"))
+gene_count_raw <- select(raw_data, c(1, contains("(raw)"))) %>% 
+  set_colnames(c("ensembl_gene_id ", rownames(metadata_samples)))
+
+metadata_genes <- select(raw_data, c(1, 38:47))
+```
+
+```{r}
+genome_species <- "mmusculus"
+genome_version <- 113
+annotation_file <- paste(genome_species, genome_version, "annotation.tsv", sep = "_")
+```
+
+```{r, eval = FALSE}
+library("biomaRt")
+
+# hsapiens_gene_ensembl
+db_annot <- useEnsembl(
+  biomart = "genes",
+  dataset = paste0(genome_species, "_gene_ensembl"),
+  version = genome_version
+)
+
+annotation <- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name", "description", "chromosome_name","start_position", "end_position", "gene_biotype"),
+    mart = db_annot
+)
+
+use_data(annotation_file)
+```
+
+```{r}
+annotation <- read_tsv(annotation_file) %>% as.data.frame()
+
+metadata_genes <- left_join(gene_count_raw, annotation, by = "ensembl_gene_id") %>%
+  select(colnames(annotation)) %>%
+  rename(`Gene name` = "external_gene_name") %>%
+  mutate(`Ensembl Gene ID` = ensembl_gene_id)
+```
+
+```{r}
+pull(metadata_genes, "chromosome_name") %>% table()
+pull(metadata_genes, "gene_biotype") %>% fct_count() %>% arrange(desc(n)) %>% print(n = 50)
+```
+
+# Data preparation
+```{r}
+gene_count <- gene_count_raw %>%
+  as.data.frame() %>%
+  column_to_rownames("ensembl_gene_id") %>%
+  round()
+
+all(rownames(metadata_samples) == colnames(gene_count))
+```
+
+```{r}
+ dea_df <- DESeqDataSetFromMatrix(
+  countData = gene_count,
+  colData = metadata_samples,
+  # design = ~ group
+  design = ~kit + condition + condition:kit + condition:ind
+) # %>%
+  # .[rowSums(counts(.) >= 10) >= 3, ]
+
+model.matrix(dea_df@design, data = metadata_samples) %>% as.data.frame()
+nrow(gene_count)
+nrow(counts(dea_df))
+nrow(counts(dea_df)) / nrow(gene_count) * 100
+```
+
+# DEA
+```{r}
+dea <- DESeq(dea_df)
+resultsNames(dea)
+sizeFactors(dea)
+coef(dea) %>% head()
+# saveRDS(dea, file = file.path(path, paste0("dea", project_name, ".RDS")))
+dea <- readRDS(file.path(path, paste0("dea", project_name, ".RDS")))
+```
+
+```{r}
+plotDispEsts(dea)
+boxplot(log10(assays(dea)[["cooks"]]), range=0, las=2)
+```
+
+# PCA plot
+```{r, message = FALSE}
+count_normalized <- vst(dea, blind = FALSE)
+conditions <- dea@design %>%
+  as.character() %>%
+  .[2] %>% 
+  str_split("[+:]") %>%
+  unlist() %>%
+  str_trim() %>%
+  unique()
+plotPCA(count_normalized, intgroup = conditions[-3]) +
+  theme_custom() + 
+  scale_color_discrete(type = palette_discrete())
+```
+
+```{r}
+library("pheatmap")
+sampleDists <- dist(t(assay(count_normalized)))
+pheatmap(
+  as.matrix(sampleDists) %>%
+  set_rownames(metadata_samples$group),
+  clustering_distance_rows = sampleDists,
+  clustering_distance_cols = sampleDists,
+  col = colorRampPalette(rev(brewer.pal(9, "Reds")))(255)
+)
+```
+
+# Normalized plot
+```{r, eval = FALSE}
+library(vsn)
+meanSdPlot(assay(count_normalized))
+```
+
+```{r, eval = FALSE}
+glimmaMDS(dea)
+glimmaMA(dea)
+```
+
+# Contrasts
+```{r}
+l_dea_raw <- map(
+  # list(c("group", "KOPos", "WTPos"), c("group", "KONeg", "WTNeg")),
+  list(list("condition_KO_vs_WT"), list(c("condition_KO_vs_WT", "kitNeg.conditionKO"))),
+  # ~ results(dea, alpha = 1-1e-10, contrast = .)
+  # ~ lfcShrink(dea, coef = .)
+  ~ lfcShrink(dea, contrast = ., type = "ashr")
+)
+  
+walk(l_dea_raw, ~summary(.))
+# saveRDS(l_dea_raw, file = file.path(path, paste0("dea_contrast", project_name, ".RDS")))
+l_dea_raw <- file.path(path, paste0("dea_contrast", project_name, ".RDS"))
+```
+
+```{r}
+fc_threshold <- 1
+p_threshold <- 0.05
+l_dea <- map(
+  l_dea_raw, 
+  ~ {
+    as.data.frame(.) %>%
+    rownames_to_column("Ensembl Gene ID") %>%
+      left_join(
+        metadata_genes,
+        by = "Ensembl Gene ID"
+      ) %>%
+      format_deg(fc_threshold = fc_threshold, p = p_threshold) %>%
+      mutate(name = `Gene name`)
+  }
+)
+
+map_df(l_dea, ~table(pull(., "Expression")))
+map_df(l_dea, ~table(pull(., "Expression"))) %>% 
+  as.data.frame() %>% 
+  set_rownames(c("WT vs KO (pos)", "WT vs KO (neg)")) %>% 
+  kable0(func=function(x)x)
+```
+
+```{r, eval = FALSE}
+colnames(gene_counts) <- gsub("_.*$", "", colnames(gene_counts))
+
+table_correspondance <- metadata_genes %>% 
+  pull(1) %>%
+  bitr(fromType = "ENSEMBL", toType = "SYMBOL", OrgDb = org)
+
+gene_counts_sum <- left_join(table_correspondance, rename(gene_counts, ENSEMBL = gene_id), by = "ENSEMBL") %>%
+  select(-ENSEMBL) %>%
+  group_by(SYMBOL) %>%
+  summarise(across(everything(), sum))
+```
+
+# Volcano plot
+```{r, message = FALSE, warning = FALSE}
+top_genes <- list.map(
+  l_dea,
+  extract_top(
+    .,
+     fc_threshold = fc_threshold,
+     p = p_threshold,
+     n = 15
+   ))
+intersect(pull(top_genes[[1]], "Gene name"), pull(top_genes[[2]], "Gene name")) %>% sort()
+volcanos <- list.map(
+    l_dea,
+    f(i, j, k) ~ volcano_plot(
+      i,
+      top_genes = top_genes[[j]],
+      cex = 1,
+      legend = "none",
+      title = k,
+      fc_threshold = fc_threshold,
+      p_threshold = p_threshold
+    ) + xlab("") + ylab("")
+  )
+plot_grid(plotlist = volcanos, ncol = 2)
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+plot_counts <- function(x) {
+  list_cbind0 <- function(x) {
+  row_names <- lapply(x, rownames)
+  x <- list.map(x, f(i) ~ as.data.frame(i))
+  tmp <- sapply(x, nrow)
+  for (i in seq(length(tmp))) {
+    add <- NULL
+    add0 <- NULL
+    if(i > 1) {
+      add <- matrix(nrow = sum(tmp[1:(i-1)]), ncol = ncol(x[[i]]))
+      if (is.data.frame(x[[i]])) {
+        add <- as.data.frame(add)
+      }
+      colnames(add) <- colnames(x[[i]])
+    }
+    if(i < length(tmp)) {
+      add0 <- matrix(nrow = sum(tmp[(i+1):length(tmp)]), ncol = ncol(x[[i]]))
+      if (is.data.frame(x[[i]])) {
+        add0 <- as.data.frame(add0)
+      }
+      colnames(add0) <- colnames(x[[i]])
+    }
+      x[[i]] <- rbind(add, x[[i]], add0)
+      rownames(x[[i]]) <- unlist(row_names)
+  }
+  list.cbind(x)
+}
+
+  
+  df <- plotCounts(
+    dea,
+    pull(x, 1),
+    intgroup = conditions[-3],
+    returnData = TRUE
+) %>% 
+    mutate(group = paste0(condition, kit))
+
+list.map(pull(df, "group") %>% unique(), f(x) ~filter(df, group == x) %>% select(count)) %>% list_cbind0() %>% set_colnames(pull(df, "group") %>% unique()) %>% plot_violin(pch_size = 4, display_log = TRUE, title = pull(x, "Gene name"))
+}
+
+map(top_genes, ~.[seq(3), "description"])
+
+map(seq(3), ~plot_counts(top_genes[[1]][.,])) -> pp
+pp[[1]] + pp[[2]] + pp[[3]]
+map(seq(3), ~plot_counts(top_genes[[2]][.,])) -> pp
+pp[[1]] + pp[[2]] + pp[[3]]
+```
+
+```{r}
+table_dea <- map(l_dea,
+    ~.x %>% 
+  set_rownames(pull(., 1)) %>%
+  print_dgea() %>%
+  mutate(`Ensembl Gene ID` = rownames(.)) %>%
+  left_join(metadata_genes, by = "Ensembl Gene ID") %>% select(-c("Gene name", contains("length")))
+)
+table_dea
+# write_delim(table_dea, "dea.csv", delim = ";", col_names = TRUE)
+```
+
+```{r, eval = FALSE}
+l_dea[[1]] %>% set_rownames(pull(., 1)) %>%
+    print_dgea() %>%
+    mutate(`Ensembl Gene ID` = rownames(.)) %>%
+    left_join(metadata_genes, by = "Ensembl Gene ID") %>% select(-c("Gene name", contains("length"))) %>% head(n = 10) %>% select(seq(3)) %>% rename(Gene = "alias") %>% kable0(func = function(x) x)
+```
+
+# Heatmap
+```{r}
+plot_heatmap <- function(x, transpose = FALSE, ...) {
+  df_genes <- assay(count_normalized)[pull(x, 1), ] %>%
+    set_colnames(metadata_samples$group) %>%
+    set_rownames(pull(x, "Gene name"))
+  sampleDists <- dist(t(df_genes))
+  geneDists <- dist(df_genes)
+  plot.new()
+  pheatmap(
+    as.matrix(df_genes),
+    clustering_distance_rows = geneDists,
+    clustering_distance_cols = sampleDists,
+    col = colorRampPalette(brewer.pal(9, "Reds"))(255),
+    ...
+  )
+}
+
+filter(l_dea[[1]], `Gene name` %in% str_to_sentence(c("DDX3Y", "XIST"))) %>% plot_heatmap()
+```
+
+```{r}
+plot_heatmap(top_genes[[1]])
+```
+
+```{r}
+plot_heatmap(top_genes[[2]])
 ```
 
 ```{r}
