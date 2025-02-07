@@ -3,6 +3,6 @@
 #' @rawNamespace import(clusterProfiler, except = rename)
 #' @rawNamespace import(reshape, except = stamp)
 #' @rawNamespace import(rstatix, except = make_clean_names)
-#' @importFrom magrittr %>%
+#' @importFrom magrittr %>% set_rownames
 #' @keywords internal
 "_PACKAGE"

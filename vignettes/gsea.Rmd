@@ -17,156 +17,170 @@ knitr::opts_chunk$set(
 ```{r setup}
 set.seed(123)
 library(GimmeMyOmics)
+org <- "org.Hs.eg.db"
+palette_discrete <- GimmeMyPlot:::palette_discrete()
 ```
 
-# GSEA
+# Data preparation
 ```{r, eval = FALSE}
-de_genes_ranked <- list.map(l_dea, f(i, j) ~ {
-    extract_top(i, 0.01, 1, n = 50000, rank = TRUE) -> tmp
-    # (sign(tmp$log2FoldChange) * (log10(tmp$padj))) %>%
-    tmp$log2FoldChange %>%
-    # tmp$pfc %>%
-        set_names(pull(tmp, 1)) %>%
+# metric <- "pfc"
+# metric <- "ranked_padj"
+metric <- "log2FoldChange"
+de_genes_ranked <- extract_top(dea_pretty, 0.01, 1, n = 50000, rank = TRUE) %>%
+    # mutate(ranked_padj = sign(log2FoldChange) * (log10(padj))) %>%
+    pull(metric, name = ensembl_gene_id) %>%
         sort(decreasing = TRUE) %>%
         .[!is.na(names(.))] %>%
         .[is.finite(.)]
-})
-sapply(de_genes_ranked, length)
-saveRDS(gse_go, file = file.path(path, paste0("gse_go", project_name, ".RDS")))
-```
-```{r}
-gse_go <- readRDS(file.path(path, paste0("gse_go", project_name, ".RDS")))
+length(de_genes_ranked)
 ```
 
-```{r}
-gse_go <- list.map(
-  de_genes_ranked, 
-  f(i) ~ {
-    gseGO(
-      i, 
+# GSEA
+```{r, message = FALSE}
+gse_go <- gseGO(
+      de_genes_ranked, 
       ont = "ALL",
       OrgDb = get(org),
       keyType = "ENSEMBL"
       ) %>%
       setReadable(org, 'ENSEMBL')
-    })
+# saveRDS(gse_go, file = file.path(path, paste0("gse_go", project_name, ".RDS")))
+# gse_go <- readRDS(file.path(path, paste0("gse_go", project_name, ".RDS")))
 ```
 
+# All pathways
 ```{r}
-map_dbl(gse_go, ~as.data.frame(.) %>% nrow())
-(table_gsea <- map(gse_go, ~print_enrich(., type = "gsea")))
+plot_enrich(gse_go, type = "gsea", label_x = "NES")# + 
+# scale_fill_gradientn(
+#     labels = function(x) label_pvalue()(x),
+#     breaks = c(0.002, 0.001, 0),
+#     name = "FDR",
+#     limits = c(0, 0.003),
+#     colours = c(GimmeMyPlot:::palette_discrete()[1], "gray50", GimmeMyPlot:::palette_discrete()[2])
+# ) +
+#     scale_size_continuous(
+#         range = c(5, 12) * 0.6,
+#         breaks = c(50, 100, 150, 200, 250),
+#         labels = scales::label_number(accuracy = 1),
+#         name = "# Leading genes",
+#         limits = c(10, 300)
+#     )
+(table_gsea <- print_enrich(gse_go, type = "gsea"))
 ```
 
-```{r}
-map(gse_go, ~print_enrich(., type = "gsea", regex = paste(name_immu2, collapse = "|")))
-```
-
-```{r}
-p <- map(gse_go, ~plot_enrich(., type = "gsea", label_x = "NES") + 
-scale_fill_gradientn(
-    labels = function(x) label_pvalue()(x),
-    breaks = c(0.002, 0.001, 0),
-    name = "FDR",
-    limits = c(0, 0.003),
-    colours = c(palette_discrete()[1], "gray50", palette_discrete()[2])
-) +
-    scale_size_continuous(
-        range = c(5, 12) * 0.6,
-        breaks = c(50, 100, 150, 200, 250),
-        labels = scales::label_number(accuracy = 1),
-        name = "# Leading genes",
-        limits = c(10, 300)
-    )
-
-)
-p[[1]] + p[[2]]
-```
-
+# Targeting all immunity 
 ```{r, message = FALSE}
-p2 <- map(gse_go, ~plot_enrich(., label_x = "NES", type = "gsea", regex = paste(name_immu2, collapse = "|")))
-p2
+plot_enrich(gse_go, label_x = "NES", type = "gsea", regex = paste(name_immu2, collapse = "|"))
+print_enrich(gse_go, type = "gsea", regex = paste(name_immu2, collapse = "|"))
 ```
 
+# Targeting only cytokines
 ```{r}
-p3 <- map(gse_go, ~plot_enrich(., label_x = "NES", type = "gsea", regex = paste(name_immu0, collapse = "|")))
-p3
-p4 <- map(gse_go, ~plot_enrich(., label_x = "NES", type = "gsea", regex = paste(cytok_paths, collapse = "|")), n = 25)
-p4
-map(gse_go, ~print_enrich(., type = "gsea", regex = paste(cytok_paths, collapse = "|")))
+plot_enrich(gse_go, label_x = "NES", type = "gsea", regex = paste(name_immu0, collapse = "|"))
+plot_enrich(gse_go, label_x = "NES", type = "gsea", regex = paste(cytok_paths, collapse = "|"), n = 25)
+print_enrich(gse_go, type = "gsea", regex = paste(cytok_paths, collapse = "|"))
 ```
 
+# Targeting only cell processes
 ```{r, eval = FALSE}
-plot_enrich(gse_go[[2]], label_x = "NES", type = "gsea", regex = paste(cell_paths, collapse = "|"))
+plot_enrich(gse_go, label_x = "NES", type = "gsea", regex = paste(cell_paths, collapse = "|"))
+print_enrich(gse_go, type = "gsea", regex = paste(cell_paths, collapse = "|"))
 ```
 
-```{r, message = FALSE}
-immuno_paths <- map(gse_go, ~print_enrich(., type = "gsea", regex = paste(name_immu2, collapse = "|")))
-setdiff(pull(immuno_paths[[1]], 1), pull(immuno_paths[[2]], 1)) %>% sort()
-setdiff(pull(immuno_paths[[2]], 1), pull(immuno_paths[[1]], 1)) %>% sort()
-intersect(pull(immuno_paths[[1]], 1), pull(immuno_paths[[2]], 1)) %>% sort()
-```
-
+# Targeting a specific pathway
 ```{r}
-(b_cell_paths <- print_enrich(gse_go[[2]], type = "gsea", regex = "B cell"))
-gene_bcells <- b_cell_paths %>% select(Genes) %>% map(~ str_split(., ";") %>% unlist() %>% sort()) %>% pluck(1)
-filter(l_dea[[1]], `Gene name` %in% gene_bcells) %>% plot_heatmap(cutree_cols = 2)
+(targeted_paths <- print_enrich(gse_go, type = "gsea", regex = "eutrophil activation"))
+gene_path <- targeted_paths %>% select(Genes) %>% map(~ str_split(., ";") %>% unlist() %>% sort()) %>% pluck(1)
 
-map(gene_bcells, sort)
-setdiff(gene_bcells[[1]], gene_bcells[[2]]) %>% sort()
-intersect(gene_bcells[[1]], gene_bcells[[2]]) %>% sort()
+dea_path <- filter(dea_pretty, name %in% gene_path)
+plot_heatmap(dea_path, cutree_cols = 2)
 
-top_markers <- list(pull(top_genes[[1]], "Gene name"), pull(top_genes[[2]], "Gene name")) %>% unlist() %>% unique() %>% sort()
-b_markers <- unlist(gene_bcells) %>% unique() %>% sort()
-intersect(b_markers, top_markers)
-# plot_venn(list(Pos = rownames(top_genes[[1]]), Neg = rownames(top_genes[[2]])))
-```
+top_genes <- extract_top(
+    dea_pretty,
+     fc_threshold = fc_threshold,
+     p = p_threshold,
+     n = 15
+   )
+top_markers <- pull(top_genes, "name") %>% sort()
+intersect(gene_path, top_markers)
 
-```{r}
-(il7_paths <- print_enrich(gse_go[[2]], type = "gsea", regex = "((nterleukins?)|(IL))-?7"))
-gene_il7 <- il7_paths %>% select(Genes) %>% map(~ str_split(., ";")) %>% unlist() %>% unique() %>% sort()
+top_path_genes <- filter(dea_pretty, name %in% gene_path) %>%
+    extract_top(
+     fc_threshold = 0,
+     p = 1,
+     n = 15
+   )
+volcano_plot(
+      dea_pretty,
+      top_genes = top_path_genes,
+      cex = 1,
+      legend = "none",
+      fc_threshold = fc_threshold,
+      p_threshold = p_threshold
+    ) + xlab("") + ylab("")
 ```
 
 ```{r}
 library("GimmeMyCluster")
-getDiscriminantVariables(t(df_genes), hclust(sampleDists) %>% cutree(2), n_cluster = 2) %>%
-    select(1) %>%
+
+count_normalized <- vst(dea, blind = FALSE)
+
+extract_normalized_genes <- function(x, count_normalized, metadata_samples) {
+    assay(count_normalized)[pull(x, 1), ] %>%
+    set_colnames(pull(metadata_samples, 1)) %>%
+    set_rownames(pull(x, external_gene_name))
+}
+targeted_genes <- extract_normalized_genes(dea_path, count_normalized, metadata_samples)
+sampleDists <- dist(t(targeted_genes))
+  
+top_cluster_genes <- getDiscriminantVariables(t(targeted_genes), hclust(sampleDists) %>% cutree(2), n_cluster = 2)
+select(top_cluster_genes, 1) %>%
     plot_bar(colour = brewer.pal(7, "Reds") %>% rev() %>% .[-7], sample_size = 100, digits = 1)
 
-
-gene <- filter(l_dea[[1]], `Gene name` == "Ifi206")
-df <- plotCounts(
+gene <- filter(dea_pretty, name == rownames(top_cluster_genes)[1])
+gene_per_sample <- plotCounts(
     dea,
     pull(gene, 1),
     intgroup = conditions[-3],
     returnData = TRUE
-) %>% 
-  mutate(group = paste0(condition, kit))
+)
 
-list.map(pull(df, "group") %>% unique(), f(x) ~filter(df, group == x) %>% select(count)) %>% list_cbind0() %>% set_colnames(pull(df, "group") %>% unique()) %>% plot_violin(pch_size = 4, display_log = TRUE, breaks = c(250, 500, 1e3), title = pull(gene, "Gene name"))
+var_group <- "condition"
+list.map(
+    pull(gene_per_sample, !!sym(var_group)) %>% unique(), 
+    f(x) ~filter(gene_per_sample, !!sym(var_group) == x) %>% select(count)
+) %>%
+    list_cbind0() %>% 
+    set_colnames(pull(gene_per_sample, !!sym(var_group)) %>% unique()) %>%
+    plot_violin(
+        pch_size = 4,
+        display_log = TRUE,
+        # breaks = c(250, 500, 1e3),
+        title = pull(gene, "name")
+    )
+```
+
+# Multiple related pathways
+```{r}
+(targeted_paths <- print_enrich(gse_go, type = "gsea", regex = "eutrophil"))
+l_path <- list.map(
+    pull(targeted_paths, Description), 
+    f(i) ~ filter(targeted_paths, Description == i) %>%
+        pull(Genes) %>%
+        str_split(";") %>%
+        pluck(1) %>%
+        sort()
+    ) %>% set_names(names(.) %>% format_path(100))
+gene_path <- unlist(l_path) %>% unique() %>% sort()
+
+filter(dea_pretty, `name` %in% gene_path) %>% plot_heatmap(cutree_cols = 2)
 ```
 
 ```{r}
-ifn_paths <- map(gse_go, ~print_enrich(., type = "gsea", regex = "(nterferon)|(IFN[ABG])"))
-gene_ifn <- map(ifn_paths, ~ select(., Genes) %>% map(~ str_split(., ";") %>% unlist() %>% unique() %>% sort()) %>% pluck(1))
-ifn_markers <- unlist(gene_ifn) %>% unique() %>% sort()
-
-filter(l_dea[[1]], `Gene name` %in% ifn_markers) %>% plot_heatmap(cutree_cols = 2)
-```
-
-```{r}
-tmp <- map(table_gsea, ~filter(., str_detect(Description, "(nterferon)|(IFN[ABG])")))
-map(tmp, function(x) list.map(pull(x, Description), f(i) ~filter(tmp[[1]], Description == i) %>% pull(Genes) %>% str_split(";") %>% pluck(1)) %>% set_names(names(.) %>% format_path(100))) -> x
-list.merge(x[[1]], x[[2]]) -> x
-
-# as_tibble(gsea_tot@result) %>% 
-#   filter(str_detect(Description, paste0(cell_paths, collapse = "|"))) -> cou
-# list.map(pull(cou, Description), f(i) ~filter(cou, Description == i) %>% pull(core_enrichment) %>% str_split("/") %>% pluck(1)) %>% set_names(names(.) %>% format_path(100)) -> x
-
-# gene_ont <- "name"
-gene_ont <- "Gene name"
-gene_path <- list_table(x) %>% rownames()
+gene_ont <- "name"
+gene_path <- list_table(l_path) %>% rownames()
 gene_path0 <- #l_de2[[1]] %>%
-  l_dea[[1]] %>%
+  dea_pretty %>%
   filter(str_detect(!!sym(gene_ont), paste0("^", gene_path, "$", collapse = "|"))) %>% 
   extract_top(1e-9, 1, rank = TRUE) %>%
   mutate(pfc = -pfc)
@@ -177,19 +191,19 @@ gene_path1 <- gene_path0 %>%
   set_colnames("value2") %>% 
   rownames_to_column("ID")
 
-common_genes <- list_count(x) %>% unlist() %>% unname()
+common_genes <- list_count(l_path) %>% unlist() %>% unname()
 
-list_count(x) %>%
+list_count(l_path) %>%
     list.map(
         f(i, j, k) ~unlist(i) %>%
             unname() %>% 
             rep(., k)
     ) %>%
     unlist() %>%
-    plot_bar_mcat(n_max = 6, sample_size = length(x), collapse = TRUE, colour_gradient = brewer.pal(7, "Reds") %>% .[-7]) + theme(axis.ticks.y = element_blank(), panel.border = element_blank())
+    plot_bar_mcat(n_max = 6, sample_size = length(l_path), collapse = TRUE, colour_gradient = brewer.pal(7, "Reds") %>% .[-7]) + theme(axis.ticks.y = element_blank(), panel.border = element_blank())
 
-# list_table(x) %>% heatmap_enrich(1.25, 100)
-list.map(x, f(i) ~i %>% .[. %in% common_genes]) %>% list_table() %>% select(colnames(.) %>% sort()) %>% heatmap_enrich(1.25, 100)
+# list_table(l_path) %>% heatmap_enrich(1.25, 100)
+list.map(l_path, f(i) ~i %>% .[. %in% common_genes]) %>% list_table() %>% select(colnames(.) %>% sort()) %>% heatmap_enrich(1.25, 100)
 ```
 
 ```{r}

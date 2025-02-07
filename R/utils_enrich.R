@@ -114,7 +114,7 @@ theme_enrich <- function(
         label_x = "Gene ratio",
         title_size = "# DEG") {
     p <- p + theme_minimal() %>%
-        theme_perso0(cex * 1.5) +
+        theme_bulk(cex * 1.5) +
         theme(
             axis.ticks.y = element_blank(),
             axis.text.y = element_text(

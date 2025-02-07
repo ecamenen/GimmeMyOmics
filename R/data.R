@@ -67,9 +67,7 @@
 #'   }
 #' }
 #'
-#' @source The data was retrieved from Ensembl (version 113) using the `biomaRt` package. The following datasets were used:
-#'   - *Homo sapiens*: `hsapiens_gene_ensembl`
-#'   - *Mus musculus*: `mmusculus_gene_ensembl`
+#' @source The data was retrieved from Ensembl (version 113).
 #'
 #' @examples
 #' # Load the dataset
