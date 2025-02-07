@@ -46,7 +46,7 @@
 #'   \item{hsapiens_113}{A `tibble` with 86,402 rows and 7 columns:
 #'     \describe{
 #'       \item{ensembl_gene_id}{Character, the Ensembl gene identifier (e.g., ENSG00000210049).}
-#'       \item{external_gene_name}{Character, the official gene symbol (e.g., MT-TF).}
+#'       \item{gene_name}{Character, the official gene symbol (e.g., MT-TF).}
 #'       \item{description}{Character, a brief description of the gene (e.g., "mitochondrially encoded tRNA-Phe").}
 #'       \item{chromosome_name}{Character, the chromosome where the gene is located (e.g., MT, 1, 2).}
 #'       \item{start_position}{Integer, the start position of the gene on the chromosome.}
@@ -57,7 +57,7 @@
 #'   \item{mmusculus_113}{A `tibble` with 78,298 rows and 7 columns:
 #'     \describe{
 #'       \item{ensembl_gene_id}{Character, the Ensembl gene identifier (e.g., ENSMUSG00000064336).}
-#'       \item{external_gene_name}{Character, the official gene symbol (e.g., mt-Tf).}
+#'       \item{gene_name}{Character, the official gene symbol (e.g., mt-Tf).}
 #'       \item{description}{Character, a brief description of the gene (e.g., "mitochondrially encoded tRNA-Phe").}
 #'       \item{chromosome_name}{Character, the chromosome where the gene is located (e.g., MT, 1, 2).}
 #'       \item{start_position}{Integer, the start position of the gene on the chromosome.}

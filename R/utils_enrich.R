@@ -173,7 +173,8 @@ theme_enrich0 <- function(
         ) +
         guides(
             size = guide_legend(
-                order = 1
+                order = 1,
+                override.aes = list(fill = "black", color = "black")
             ),
             fill = guide_colorbar(
                 order = 2,

@@ -18,10 +18,8 @@ knitr::opts_chunk$set(
 set.seed(123)
 source("R/utils_theme.R")
 source("R/utils_bulk.R")
-source("R/utils_enrich.R")
 genome_species <- "hsapiens"
 genome_version <- 113
-select <- dplyr::select
 ```
 
 ```{r}
@@ -141,7 +139,7 @@ dea_pretty <- dea_raw %>%
         by = "ensembl_gene_id"
       ) %>%
       format_deg(fc_threshold = fc_threshold, p = p_threshold) %>%
-      mutate(name = external_gene_name)
+      mutate(name = gene_name)
 
 table(pull(dea_pretty, "Expression")) %>% 
   as.data.frame() %>% 
@@ -164,6 +162,10 @@ volcano_plot(
       fc_threshold = fc_threshold,
       p_threshold = p_threshold
     ) + xlab("") + ylab("")
+```
+
+```{r, eval = FALSE}
+(top_description <- top_genes %>% pull(1) %>% map(~get_ncbi_description(., metadata_genes)) %>% list.rbind())
 ```
 
 
@@ -210,7 +212,7 @@ list.map(
     ) %>%
     list_cbind0() %>%
     set_colnames(pull(df, "condition") %>% unique()) %>% 
-    plot_violin(pch_size = 4, display_log = TRUE, title = pull(x, "external_gene_name"))
+    plot_violin(pch_size = 4, display_log = TRUE, title = pull(x, "gene_name"))
 }
 
 top_genes[seq(3), "description"]
@@ -225,7 +227,7 @@ pp[[1]] + pp[[2]] + pp[[3]]
   print_dgea() %>%
   rownames_to_column("ensembl_gene_id") %>%
   left_join(metadata_genes, by = "ensembl_gene_id") %>% 
-  select(-external_gene_name) %>%
+  select(-gene_name) %>%
   rename(Gene = "alias")
 )
 # write_delim(table_dea, "dea.csv", delim = ";", col_names = TRUE)
@@ -233,23 +235,7 @@ pp[[1]] + pp[[2]] + pp[[3]]
 
 # Heatmap
 ```{r}
-plot_heatmap <- function(x, transpose = FALSE, ...) {
-  df_genes <- assay(count_normalized)[pull(x, 1), ] %>%
-    set_colnames(pull(metadata_samples, 1)) %>%
-    set_rownames(pull(x, external_gene_name))
-  sampleDists <- dist(t(df_genes))
-  geneDists <- dist(df_genes)
-  plot.new()
-  pheatmap(
-    as.matrix(df_genes),
-    clustering_distance_rows = geneDists,
-    clustering_distance_cols = sampleDists,
-    col = colorRampPalette(brewer.pal(9, "Reds"))(255),
-    ...
-  )
-}
-
-# filter(metadata_genes, external_gene_name %in% c("DDX3Y", "XIST")) %>% plot_heatmap()
+# filter(metadata_genes, gene_name %in% c("DDX3Y", "XIST")) %>% plot_heatmap()
 ```
 
 ```{r}

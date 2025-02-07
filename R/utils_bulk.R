@@ -203,3 +203,49 @@ print_dgea <- function(x, name = FALSE, ensembl = NULL, base = 2, ...) {
         mutate(FDR = format(padj, digits = 2, scientific = TRUE)) %>%
         select(alias, contains("full_name"), FC, FDR)
 }
+
+get_ncbi_description <- function(x, metadata_genes) {
+    gene_subset <- filter(metadata_genes, ensembl_gene_id == x)
+    gene_entrez <- pull(gene_subset, "entrezgene_id") %>%
+        .[1]
+    if(!is.na(gene_entrez))
+        paste0("https://www.ncbi.nlm.nih.gov/gene/", gene_entrez) %>%
+        read_html() %>%
+        html_element("#summaryDl") %>%
+        html_text2() %>%
+        str_extract("Summary\n(.*)\n", group = 1) %>%
+        str_trim() %>%
+        str_remove_all("^(T(his)|(he)) ") %>%
+        str_remove_all("^((gene)|(locus)|(protein)) ") %>%
+        str_remove_all("^encode[sd] (a (matrix )?protein )?((which binds)|(that is))?") %>%
+        str_remove_all("^(is) ") %>%
+        str_remove_all("^(a member of )*(the)?") %>%
+        str_remove_all("^((by )?this gene,?) ") %>%
+        str_remove_all("^(that plays a role in) ") %>%
+        str_remove_all("^predicted (to )?") %>%
+        str_remove_all("^(enables?) (to )?") %>%
+        str_remove_all("^(was) ") %>%
+        str_remove_all("^belongs? (to )?") %>%
+        str_remove_all(". \\[.*\\]$") %>%
+        str_trim() %>%
+        GimmeMyPlot:::to_title() %>%
+        paste0(pull(gene_subset, "gene_name"), ": ", .)
+    else
+        paste0(pull(gene_subset, "gene_name"), ": ", NA)
+}
+
+plot_heatmap <- function(x, transpose = FALSE, ...) {
+    df_genes <- assay(count_normalized)[pull(x, 1), ] %>%
+        set_colnames(pull(metadata_samples, 1)) %>%
+        set_rownames(pull(x, gene_name))
+    sampleDists <- dist(t(df_genes))
+    geneDists <- dist(df_genes)
+    plot.new()
+    pheatmap(
+        as.matrix(df_genes),
+        clustering_distance_rows = geneDists,
+        clustering_distance_cols = sampleDists,
+        col = colorRampPalette(brewer.pal(9, "Reds"))(255),
+        ...
+    )
+}

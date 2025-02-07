@@ -18,7 +18,8 @@ knitr::opts_chunk$set(
 set.seed(123)
 library(GimmeMyOmics)
 org <- "org.Hs.eg.db"
-palette_discrete <- GimmeMyPlot:::palette_discrete()
+source("R/utils_enrich.R")
+source("R/utils_network.R")
 ```
 
 # Data preparation
@@ -36,12 +37,13 @@ length(de_genes_ranked)
 ```
 
 # GSEA
-```{r, message = FALSE}
+```{r}
 gse_go <- gseGO(
       de_genes_ranked, 
       ont = "ALL",
       OrgDb = get(org),
-      keyType = "ENSEMBL"
+      keyType = "ENSEMBL",
+      verbose = FALSE
       ) %>%
       setReadable(org, 'ENSEMBL')
 # saveRDS(gse_go, file = file.path(path, paste0("gse_go", project_name, ".RDS")))
@@ -128,7 +130,7 @@ count_normalized <- vst(dea, blind = FALSE)
 extract_normalized_genes <- function(x, count_normalized, metadata_samples) {
     assay(count_normalized)[pull(x, 1), ] %>%
     set_colnames(pull(metadata_samples, 1)) %>%
-    set_rownames(pull(x, external_gene_name))
+    set_rownames(pull(x, gene_name))
 }
 targeted_genes <- extract_normalized_genes(dea_path, count_normalized, metadata_samples)
 sampleDists <- dist(t(targeted_genes))
@@ -204,6 +206,59 @@ list_count(l_path) %>%
 
 # list_table(l_path) %>% heatmap_enrich(1.25, 100)
 list.map(l_path, f(i) ~i %>% .[. %in% common_genes]) %>% list_table() %>% select(colnames(.) %>% sort()) %>% heatmap_enrich(1.25, 100)
+```
+
+# Network
+```{r}
+gse_go2 <- remove_cellcycle(gse_go) %>%
+  filter_gsea(regex = paste(name_immu2, collapse = "|")) %>%
+  pairwise_termsim() %>% 
+  clusterProfiler::simplify(cutoff = 0.9)
+```
+
+```{r}
+map_enrich(
+    gse_go2,
+    cluster.params = list(cluster = FALSE),
+    regex = paste(name_immu, collapse = "|"),
+    showCategory = 50,
+    cex.params = list(category_label =  0.9, line = 0.5),
+    cex = 0.7
+)
+```
+
+```{r}
+tree_enrich(
+    gse_go2,
+    regex = paste(name_immu0, collapse = "|"),
+    showCategory = 50,
+    verbose = FALSE,
+    label_words_n = 2,
+    width = 100
+)
+```
+
+```{r}
+network_enrich(
+    gse_go2,
+    foldChange = de_genes_ranked,
+    regex = paste(cell_paths, collapse = "|"),
+    showCategory = 20,
+    col_highlight = brewer.pal(8, "Reds") %>% rev(),
+    cex = 0.5
+)
+```
+
+```{r}
+ridge_enrich(
+    gse_go2,
+    regex = paste(cell_paths, collapse = "|"),
+    width = 100
+)
+```
+
+```{r}
+gsea_enrich(gse_go2, regex = "eutrophil", geneSetID = seq(5))
 ```
 
 ```{r}

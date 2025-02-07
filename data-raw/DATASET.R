@@ -24,9 +24,10 @@ biomart_annotation <- map(
     )
 
     getBM(
-        attributes = c("ensembl_gene_id", "external_gene_name", "description", "chromosome_name","start_position", "end_position", "gene_biotype"),
+        attributes = c("ensembl_gene_id", "external_gene_name", "description", "chromosome_name","start_position", "end_position", "gene_biotype", "entrezgene_id"),
         mart = db_annot
     ) %>%
+        rename(gene_name = "external_gene_name") %>%
         as_tibble()
 }) %>%
     set_names(paste(genome_species, genome_version, sep = "_"))
