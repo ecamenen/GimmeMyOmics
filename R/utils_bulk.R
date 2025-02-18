@@ -1,6 +1,6 @@
-format_deg <- function(
+format_dea <- function(
         x,
-        fc_threshold = log2(1.5),
+        fc_threshold = log2(2),
         p_threshold = 0.05
 ) {
     x %>%
@@ -16,7 +16,7 @@ format_deg <- function(
         filter(log2FoldChange >= 0.01 | log2FoldChange <= -0.01)
 }
 
-extract_top <- function(res, fc_threshold = 1, p_threshold = 0.05, n = 1000, rank = FALSE, var = "pfc", f = desc) {
+top_genes <- function(res, fc_threshold = 1, p_threshold = 0.05, n = 1000, rank = FALSE, var = "pfc", f = desc) {
     temp <- res %>%
         mutate(
             pfc = -log10(padj) * log2FoldChange,
@@ -175,13 +175,13 @@ volcano_plot <- function(
 }
 
 
-print_dgea0 <- function(x, base = 2, ...) {
+print_dea0 <- function(x, base = 2, ...) {
     if (base == 2) {
         func <- function(x) 2^(x)
     } else {
         func <- function(x) exp(x)
     }
-    extract_top(x, n = 10000, rank = TRUE, fc_threshold = 0, p_threshold = 1, ...) %>%
+    top_genes(x, n = 10000, rank = TRUE, fc_threshold = 0, p_threshold = 1, ...) %>%
         filter(Expression != "ns") %>%
         mutate(
             FC = ifelse(
@@ -193,8 +193,8 @@ print_dgea0 <- function(x, base = 2, ...) {
         select(name, contains("ensembl_ids"), baseMean, FC, log2FoldChange, contains("lfcSE"), pvalue, padj, log10p, pfc, rank_fc, rank_p, rank_pfc, Expression)
 }
 
-print_dgea <- function(x, name = FALSE, ensembl = NULL, base = 2, ...) {
-    res <- print_dgea0(x, base = base, ...)
+print_dea <- function(x, name = FALSE, ensembl = NULL, base = 2, ...) {
+    res <- print_dea0(x, base = base, ...)
     if (name) {
         res <- mutate(res, full_name = get_ncbi_name(res, ensembl = ensembl))
     }

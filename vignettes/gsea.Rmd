@@ -27,7 +27,7 @@ source("R/utils_network.R")
 # metric <- "pfc"
 # metric <- "ranked_padj"
 metric <- "log2FoldChange"
-de_genes_ranked <- extract_top(dea_pretty, 0.01, 1, n = 50000, rank = TRUE) %>%
+de_genes_ranked <- top_genes(dea_pretty, 0.01, 1, n = 50000, rank = TRUE) %>%
     # mutate(ranked_padj = sign(log2FoldChange) * (log10(padj))) %>%
     pull(metric, name = ensembl_gene_id) %>%
         sort(decreasing = TRUE) %>%
@@ -102,7 +102,7 @@ gene_path <- targeted_paths %>%
 dea_path <- filter(dea_pretty, name %in% gene_path)
 plot_heatmap(dea_path, cutree_cols = 2)
 
-top_genes <- extract_top(
+top_genes <- top_genes(
     dea_pretty,
      fc_threshold = fc_threshold,
      p = p_threshold,
@@ -112,7 +112,7 @@ top_markers <- pull(top_genes, "name") %>% sort()
 intersect(gene_path, top_markers)
 
 top_path_genes <- filter(dea_pretty, name %in% gene_path) %>%
-    extract_top(
+    top_genes(
      fc_threshold = 0,
      p = 1,
      n = 15
@@ -197,7 +197,7 @@ gene_path <- list_table(l_path) %>% rownames()
 gene_path0 <- #l_de2[[1]] %>%
   dea_pretty %>%
   filter(str_detect(!!sym(gene_ont), paste0("^", gene_path, "$", collapse = "|"))) %>% 
-  extract_top(1e-9, 1, rank = TRUE) %>%
+  top_genes(1e-9, 1, rank = TRUE) %>%
   mutate(pfc = -pfc)
 gene_path1 <- gene_path0 %>% 
   filter(!duplicated(!!sym(gene_ont))) %>% 
@@ -272,7 +272,7 @@ network_enrich(
 ```
 
 ```{r}
-ridge_enrich(
+ridge_gsea(
     gse_go2,
     regex = paste(cell_paths, collapse = "|"),
     width = 100
