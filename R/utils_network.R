@@ -22,10 +22,10 @@ ridge_enrich <- function(
         ...
 ) {
     filter_gsea(x, regex = regex, FDR = FDR, width = width) %>%
-        ridgeplot(...) %>%
+        ridgeplot(...)  +
+        xlab("NES") %>%
         theme_bulk() %>%
-        theme_enrich0(cex = 0.7, colour = colour) +
-        xlab("NES")
+        theme_enrich0(cex = 0.7, colour = colour)
 }
 
 gsea_enrich <- function(
@@ -227,7 +227,8 @@ filter_gsea <- function(x, regex, FDR = 0.05, width = 500) {
         mutate(p.adjust = as.numeric(p.adjust))
     if (!is.null(regex)) {
         x@result <- x@result %>%
-            filter(str_detect(Description, regex))
+            filter(str_detect(Description, regex)) %>%
+            arrange(NES)
     }
     x@result[, "Description"] <- to_title(x@result[, "Description"]) %>% str_wrap(width)
     return(x)

@@ -33,7 +33,7 @@ metadata_samples$condition <- relevel(metadata_samples$condition, ref = "HD")
 data("biomart_annotation")
 (annotation <- biomart_annotation[[paste(genome_species, genome_version, sep = "_")]])
 
-metadata_genes <- left_join(gene_count_raw, annotation, by = "ensembl_gene_id") %>%
+metadata_genes <- filter(annotation, !duplicated(ensembl_gene_id)) %>% left_join(gene_count_raw, ., by = "ensembl_gene_id") %>%
   select(colnames(annotation))
 ```
 
@@ -67,8 +67,8 @@ nrow(counts(dea_df)) / nrow(gene_count) * 100
 ```
 
 # DEA
-```{r}
-dea <- DESeq(dea_df)
+```{r, message = FALSE, warning=FALSE}
+dea <- DESeq(dea_df, quiet = TRUE)
 resultsNames(dea)
 sizeFactors(dea)
 coef(dea) %>% kable0() %>% head()
@@ -122,8 +122,13 @@ glimmaMA(dea)
 # Contrasts
 ```{r}
 # dea_raw <- results(dea, alpha = 1-1e-10) %>%
-dea_raw <- lfcShrink(dea, contrast = c(colnames(metadata_samples)[1], levels(pull(metadata_samples, 1))), type = "ashr")
-map(dea_raw, summary)
+dea_raw <- lfcShrink(
+    dea,
+    contrast = c(colnames(metadata_samples)[1], levels(pull(metadata_samples, 1))),
+    type = "ashr",
+    quiet = TRUE
+)
+summary(dea_raw)
 
 # saveRDS(dea_raw, file = file.path(path, paste0("dea_contrast", project_name, ".RDS")))
 ```
@@ -165,7 +170,7 @@ volcano_plot(
 ```
 
 ```{r, eval = FALSE}
-(top_description <- top_genes %>% pull(1) %>% map(~get_ncbi_description(., metadata_genes)) %>% list.rbind())
+(top_description <- top_genes %>% pull(1) %>% map(~get_ncbi_description(., annotation)) %>% list.rbind())
 ```
 
 

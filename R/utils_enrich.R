@@ -415,7 +415,6 @@ list_common <- function(x) {
     }
     res <- res[order(names(res))]
     len0 <- names(res) %>% str_extract_all(":") %>% sapply(length) %>% set_names(seq(.)) %>% sort()
-    print(len0)
     len <- names(len0) %>% as.numeric()
     return(res[len])
 }
@@ -440,7 +439,7 @@ heatmap_enrich <- function(x, cex = 1, width_text = 20, power = 2) {
             key = str_wrap(key, width_text),
             ID = str_wrap(ID, width_text)
         ) %>%
-        left_join(gene_path1) %>%
+        left_join(gene_path1, by = "ID") %>%
         mutate(
             value2 = ifelse(value == 0, NA, value2),
             key = factor(key, levels = colnames(x) %>% str_wrap(width_text))

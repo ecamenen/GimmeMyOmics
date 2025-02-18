@@ -45,7 +45,9 @@ gse_go <- gseGO(
       keyType = "ENSEMBL",
       verbose = FALSE
       ) %>%
-      setReadable(org, 'ENSEMBL')
+      setReadable(org, 'ENSEMBL') %>%
+    suppressWarnings() %>%
+    invisible()
 # saveRDS(gse_go, file = file.path(path, paste0("gse_go", project_name, ".RDS")))
 # gse_go <- readRDS(file.path(path, paste0("gse_go", project_name, ".RDS")))
 ```
@@ -92,7 +94,10 @@ print_enrich(gse_go, type = "gsea", regex = paste(cell_paths, collapse = "|"))
 # Targeting a specific pathway
 ```{r}
 (targeted_paths <- print_enrich(gse_go, type = "gsea", regex = "eutrophil activation"))
-gene_path <- targeted_paths %>% select(Genes) %>% map(~ str_split(., ";") %>% unlist() %>% sort()) %>% pluck(1)
+gene_path <- targeted_paths %>%
+    select(Genes) %>% 
+    map(~ str_split(., ";") %>% unlist() %>% sort()) %>% 
+    pluck(1)
 
 dea_path <- filter(dea_pretty, name %in% gene_path)
 plot_heatmap(dea_path, cutree_cols = 2)
@@ -135,9 +140,17 @@ extract_normalized_genes <- function(x, count_normalized, metadata_samples) {
 targeted_genes <- extract_normalized_genes(dea_path, count_normalized, metadata_samples)
 sampleDists <- dist(t(targeted_genes))
   
-top_cluster_genes <- getDiscriminantVariables(t(targeted_genes), hclust(sampleDists) %>% cutree(2), n_cluster = 2)
+top_cluster_genes <- getDiscriminantVariables(
+    t(targeted_genes), 
+    hclust(sampleDists) %>% cutree(2),
+    n_cluster = 2
+)
 select(top_cluster_genes, 1) %>%
-    plot_bar(colour = brewer.pal(7, "Reds") %>% rev() %>% .[-7], sample_size = 100, digits = 1)
+    plot_bar(
+        colour = brewer.pal(7, "Reds") %>% rev() %>% .[-7],
+        sample_size = 100,
+        digits = 1
+    )
 
 gene <- filter(dea_pretty, name == rownames(top_cluster_genes)[1])
 gene_per_sample <- plotCounts(
@@ -159,7 +172,7 @@ list.map(
         display_log = TRUE,
         # breaks = c(250, 500, 1e3),
         title = pull(gene, "name")
-    )
+    ) %>% suppressMessages()
 ```
 
 # Multiple related pathways
@@ -202,13 +215,22 @@ list_count(l_path) %>%
             rep(., k)
     ) %>%
     unlist() %>%
-    plot_bar_mcat(n_max = 6, sample_size = length(l_path), collapse = TRUE, colour_gradient = brewer.pal(7, "Reds") %>% .[-7]) + theme(axis.ticks.y = element_blank(), panel.border = element_blank())
+    plot_bar_mcat(
+        n_max = 6,
+        sample_size = length(l_path),
+        collapse = TRUE,
+        colour_gradient = brewer.pal(7, "Reds") %>% .[-7]
+    ) + 
+    theme(axis.ticks.y = element_blank(), panel.border = element_blank())
 
 # list_table(l_path) %>% heatmap_enrich(1.25, 100)
-list.map(l_path, f(i) ~i %>% .[. %in% common_genes]) %>% list_table() %>% select(colnames(.) %>% sort()) %>% heatmap_enrich(1.25, 100)
+list.map(l_path, f(i) ~i %>% .[. %in% common_genes]) %>%
+    list_table() %>% 
+    select(colnames(.) %>% sort()) %>%
+    heatmap_enrich(1.25, 100)
 ```
 
-# Network
+# Pathway network
 ```{r}
 gse_go2 <- remove_cellcycle(gse_go) %>%
   filter_gsea(regex = paste(name_immu2, collapse = "|")) %>%
@@ -224,7 +246,7 @@ map_enrich(
     showCategory = 50,
     cex.params = list(category_label =  0.9, line = 0.5),
     cex = 0.7
-)
+) %>% suppressMessages()
 ```
 
 ```{r}
@@ -235,7 +257,7 @@ tree_enrich(
     verbose = FALSE,
     label_words_n = 2,
     width = 100
-)
+) %>% suppressMessages()
 ```
 
 ```{r}
@@ -246,7 +268,7 @@ network_enrich(
     showCategory = 20,
     col_highlight = brewer.pal(8, "Reds") %>% rev(),
     cex = 0.5
-)
+) %>% suppressMessages()
 ```
 
 ```{r}
@@ -254,11 +276,17 @@ ridge_enrich(
     gse_go2,
     regex = paste(cell_paths, collapse = "|"),
     width = 100
-)
+) %>% suppressMessages()
 ```
 
 ```{r}
-gsea_enrich(gse_go2, regex = "eutrophil", geneSetID = seq(5))
+gsea_enrich(
+    gse_go2,
+    regex = "eutrophil",
+    geneSetID = seq(5),
+    title = "Neutrophil activity"
+)
+gsea_enrich(gse_go2, regex = "eutrophil", width = 100)
 ```
 
 ```{r}
