@@ -43,7 +43,12 @@ gsea_enrich <- function(
 ) {
 
     filter_gsea(x, regex = regex, FDR = FDR, width = width) %>%
-        gseaplot2(title = ifelse(is.null(title), .$Description[id], title), geneSetID = geneSetID, color = color, ...)
+        gseaplot2(
+            title = ifelse(is.null(title), .$Description[id], title),
+            geneSetID = geneSetID,
+            color = color,
+            ...
+        )
 }
 
 network_enrich <- function(
@@ -57,7 +62,6 @@ network_enrich <- function(
         regex = NULL,
         width = 20,
         FDR = 0.05,
-        # colour = c(rep("grey", 6), "#FEE08B", "#FDAE61", "#F46D43", "#D53E4F", "#9E0142"),
         colour = brewer.pal(11, "Spectral") %>% rev(),
         title = NULL,
         power = 2,
@@ -73,7 +77,6 @@ network_enrich <- function(
             str_trunc(50) %>% str_wrap(width)
     }
 
-    # options(ggrepel.max.overlaps = 1000)
     p <- cnetplot(
         x,
         node_label = node_label,
@@ -84,7 +87,6 @@ network_enrich <- function(
             # edge = TRUE,
             category_node = 1.5 * cex
         ),
-        # max.overlaps = Inf,
         color.params = list(foldChange = foldChange, category = "black"),
         shadowtext = "none",
         # colorEdge = TRUE,
@@ -109,9 +111,6 @@ network_enrich <- function(
             title_size = title_size,
             num = TRUE
         )
-        # scale_color_gradientn(
-        #   # trans =
-        # ) +
     }
 
     if (!is.null(highlighted)) {
@@ -152,7 +151,16 @@ heatmap_enrich2 <- function(
 }
 
 
-tree_enrich <- function(x, regex = NULL, FDR = 0.05, metric = "NES", width = 20, label_words_n = 4, group_color = GimmeMyPlot:::palette_discrete(), ...) {
+tree_enrich <- function(
+    x,
+    regex = NULL,
+    FDR = 0.05,
+    metric = "NES",
+    width = 20,
+    label_words_n = 4,
+    group_color = GimmeMyPlot:::palette_discrete(),
+    ...
+) {
     filter_gsea(x, regex = regex, FDR = FDR, width = width) %>%
         pairwise_termsim() %>%
         treeplot(
@@ -263,7 +271,13 @@ map_enrich <- function(
 ) {
     p <- filter_gsea(x, regex = regex, FDR = FDR, width = width) %>%
         pairwise_termsim(showCategory = showCategory + 1) %>%
-        emapplot(cluster.params = cluster.params, cex.params = cex.params, alpha = alpha, showCategory = showCategory, ...) +
+        emapplot(
+            cluster.params = cluster.params,
+            cex.params = cex.params,
+            alpha = alpha,
+            showCategory = showCategory,
+            ...
+        ) +
         theme_void() +
         theme(legend.title = element_text(face = "italic", size = 12 * cex))
 
