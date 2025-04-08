@@ -1,6 +1,6 @@
 library(stringi)
 
-#' @export
+
 #' Cuts a sentence to a given number of characters and leaves the words as integers
 #' @example str_trunc1("Hi there, I'm a sentence to format.")
 str_trunc1 <- function(x, n = 20, w = " ") {
@@ -9,7 +9,6 @@ str_trunc1 <- function(x, n = 20, w = " ") {
         detect(function(x) str_length(x) <= n, .dir = "backward")
 }
 
-#' @export
 #' Cuts a sentence to a given number of words
 #' @example str_trunc0("Hi there, I'm a sentence to format.")
 str_trunc0 <- function(x, n = 5, w = " ") {
@@ -45,23 +44,73 @@ geneInPath <- function(x, y) {
             length()
     )
 }
-
-print_enrich <- function(x, path2gene = NULL, type = "enrichr", regex = NULL, pval = 0.05) {
+#' Displays Enrichment
+#'
+#' Displays enrichment analysis results from various sources (e.g., Enrichr, GSEA).
+#'
+#' @param x An enrichment results.
+#' @param path2gene A named list mapping pathways to genes, required for `enrichr` method.
+#' @param method A character string specifying the enrichment analysis method. Options are:
+#'   - `"enrichr"`: Enrichr results.
+#'   - `"gsea"`: Gene Set Enrichment Analysis (GSEA) results.
+#'   - `"other"`: Other enrichment result formats.
+#' @param regex A character vector of regular expressions to filter terms by their descriptions.
+#' @param pval A numeric threshold for filtering results based on FDR-adjusted p-values.
+#'
+#' @details
+#' The function standardizes different enrichment result formats, applying transformations such as:
+#' - Computing the percentage of differentially expressed genes (DEGs) in each pathway.
+#' - Formatting gene lists for better readability.
+#' - Filtering results based on FDR and optional regex pattern matching.
+#'
+#' @return A formatted `tibble` containing processed enrichment results,
+#'   with columns:
+#'   - `Description`: The pathway or term name.
+#'   - `FDR`: The adjusted p-value.
+#'   - `Nb DEG` / `Nb genes`: Number of differentially expressed genes and total genes in the pathway.
+#'   - `DEG/Genes`: Percentage of DEGs in the pathway.
+#'   - `Genes`: List of genes involved.
+#'   - Additional columns depending on the enrichment method (e.g., `NES`, `ID`).
+#'
+#' @examples
+#' path_name <- c("Neutrophil degranulation", "Macrophage migration")
+#' pval <- c(2.7e-02, 2.89e-03)
+#' genes <- c("ITGB2/ANXA3/STXBP2/SPI1/ITGAM/CD177", "MAPK3/AKIRIN1/CX3CR1/CNN2/LGALS3/B4GALT1/C3AR1")
+#' enrich_results <- data.frame(
+#'   Term = path_name,
+#'   Description = path_name,
+#'   Adjusted.P.value = pval,
+#'   p.adjust = pval,
+#'   Overlap = c("6/12", "7/17"),
+#'   ID = c("GO:0043312", "GO:1905517"),
+#'   geneID = genes,
+#'   Overlap = genes,
+#'   core_enrichment = genes,
+#'   setSize = c(12, 17)
+#' )
+#'
+#' print_enrich(enrich_results, type = "other", pval = 0.05)
+#'
+#' @export
+print_enrich <- function(x, path2gene = NULL, method = "enrichr", regex = NULL, pval = 0.05) {
     x <- as_tibble(x)
-    if (type == "enrichr" && is.null(path2gene)) {
-        stop("`path2gene` parameter must not be empty.")
+
+    if (method == "enrichr" && is.null(path2gene)) {
+        stop("`path2gene` parameter must not be empty for Enrichr.")
     }
+
     if (!is.null(path2gene)) {
         x <- mutate(x, bg = geneInPath(x, path2gene))
     }
-    if (type  == "enrichr") {
-        x <- mutate(
+    x <- switch(
+        method,
+        "enrichr" = mutate(
             x,
             FDR = p.adjust,
             Genes = str_replace_all(geneID, "/", ";")
-        )  %>% select(-geneID)
-    } else if (type == "gsea") {
-        x <- mutate(
+        )  %>% select(-geneID),
+
+        "gsea" = mutate(
             x,
             FDR = p.adjust,
             # Count = stri_split_fixed(core_enrichment, "/") %>%
@@ -70,16 +119,15 @@ print_enrich <- function(x, path2gene = NULL, type = "enrichr", regex = NULL, pv
                 sapply(function(x) unique(x) %>% length()),
             bg = setSize,
             Genes = stri_split_fixed(core_enrichment, "/") %>% sapply(function(x) unique(x) %>% paste0(collapse = ";"))
-        )
-    } else {
-        x <- mutate(
+        ),
+        mutate(
             x,
             FDR = Adjusted.P.value,
             Description = Term,
             Count = str_split_fixed(Overlap, "/", 2) %>% .[, 1] %>% as.numeric(),
-            bg = str_split_fixed(Overlap, "/", 2) %>% .[, 2] %>% as.numeric(),
+            bg = str_split_fixed(Overlap, "/", 2) %>% .[, 2] %>% as.numeric()
         )
-    }
+    )
     if (!is.null(regex)) {
         x <- x %>% filter(str_detect(Description, paste(regex, collapse = "|")))
     }
@@ -87,13 +135,12 @@ print_enrich <- function(x, path2gene = NULL, type = "enrichr", regex = NULL, pv
     res <- x %>%
         filter(FDR <= pval) %>%
         mutate(
-            # FDR = -log10(FDR) %>% round(1),
             FDR = format(FDR, digits = 3, scientific = TRUE),
-            `DEG/Genes` = round(Count/bg * 100, 1)
+            `DEG/Genes` = round(Count / bg * 100, 1)
         ) %>%
         rename(`Nb DEG` = Count, `Nb genes` = bg) %>%
         select(Description, FDR, `Nb DEG`, `Nb genes`, `DEG/Genes`, Genes, contains(c("NES", "ID")))
-    if (type == "gsea") {
+    if (method == "gsea") {
         res <- rename_with(
             res,
             ~ str_replace_all(., "DEG", "Enriched"),
@@ -102,6 +149,7 @@ print_enrich <- function(x, path2gene = NULL, type = "enrichr", regex = NULL, pv
             relocate("NES", .after = "FDR")%>%
             relocate("ID", .after = "Description")
     }
+
     return(res)
 }
 

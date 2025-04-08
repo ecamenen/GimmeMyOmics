@@ -23,7 +23,7 @@ source("R/utils_network.R")
 ```
 
 # Data preparation
-```{r, eval = FALSE}
+```{r}
 # metric <- "pfc"
 # metric <- "ranked_padj"
 metric <- "log2FoldChange"
@@ -99,8 +99,8 @@ gene_path <- targeted_paths %>%
     map(~ str_split(., ";") %>% unlist() %>% sort()) %>% 
     pluck(1)
 
-dea_path <- filter(dea_pretty, name %in% gene_path)
-plot_heatmap(dea_path, cutree_cols = 2)
+dea_path <- filter(dea_pretty, gene_name %in% gene_path)
+plot_heatmap(dea_path, metadata_samples, count_normalized, cutree_cols = 2)
 
 top_genes <- top_genes(
     dea_pretty,
@@ -108,10 +108,10 @@ top_genes <- top_genes(
      p = p_threshold,
      n = 15
    )
-top_markers <- pull(top_genes, "name") %>% sort()
+top_markers <- pull(top_genes, "gene_name") %>% sort()
 intersect(gene_path, top_markers)
 
-top_path_genes <- filter(dea_pretty, name %in% gene_path) %>%
+top_path_genes <- filter(dea_pretty, gene_name %in% gene_path) %>%
     top_genes(
      fc_threshold = 0,
      p = 1,
@@ -133,7 +133,7 @@ library("GimmeMyCluster")
 count_normalized <- vst(dea, blind = FALSE)
 
 extract_normalized_genes <- function(x, count_normalized, metadata_samples) {
-    assay(count_normalized)[pull(x, 1), ] %>%
+    assay(count_normalized)[pull(x, "ensembl_gene_id"), ] %>%
     set_colnames(pull(metadata_samples, 1)) %>%
     set_rownames(pull(x, gene_name))
 }
@@ -152,10 +152,10 @@ select(top_cluster_genes, 1) %>%
         digits = 1
     )
 
-gene <- filter(dea_pretty, name == rownames(top_cluster_genes)[1])
+gene <- filter(dea_pretty, gene_name == rownames(top_cluster_genes)[1])
 gene_per_sample <- plotCounts(
     dea,
-    pull(gene, 1),
+    pull(gene, "ensembl_gene_id"),
     intgroup = conditions[-3],
     returnData = TRUE
 )
@@ -171,7 +171,7 @@ list.map(
         pch_size = 4,
         display_log = TRUE,
         # breaks = c(250, 500, 1e3),
-        title = pull(gene, "name")
+        title = pull(gene, "gene_name")
     ) %>% suppressMessages()
 ```
 
@@ -188,11 +188,12 @@ l_path <- list.map(
     ) %>% set_names(names(.) %>% format_path(100))
 gene_path <- unlist(l_path) %>% unique() %>% sort()
 
-filter(dea_pretty, `name` %in% gene_path) %>% plot_heatmap(cutree_cols = 2)
+filter(dea_pretty, `gene_name` %in% gene_path) %>% 
+    plot_heatmap(metadata_samples, count_normalized, cutree_cols = 2)
 ```
 
 ```{r}
-gene_ont <- "name"
+gene_ont <- "gene_name"
 gene_path <- list_table(l_path) %>% rownames()
 gene_path0 <- #l_de2[[1]] %>%
   dea_pretty %>%

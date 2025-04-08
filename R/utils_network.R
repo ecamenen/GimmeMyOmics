@@ -8,16 +8,18 @@ upset_enrich <- function(
         x,
         regex = NULL,
         width = 20,
+        FDR = 0.05,
         ...
 ) {
     filter_gsea(x, regex = regex, FDR = FDR, width = width) %>%
         upsetplot(...)
 }
 
-ridge_enrich <- function(
+ridge_gsea <- function(
         x,
         regex = NULL,
-        width = 20,
+        width = 50,
+        FDR = 0.05,
         colour = c(GimmeMyPlot:::palette_discrete()[1], "gray50", GimmeMyPlot:::palette_discrete()[2]),
         ...
 ) {
@@ -36,6 +38,7 @@ gsea_enrich <- function(
         id = 1,
         color = "black",
         title = NULL,
+        FDR = 0.05,
         ...
 ) {
 
@@ -122,7 +125,17 @@ network_enrich <- function(
     return(p)
 }
 
-heatmap_enrich2 <- function(x, foldChange, wrap = 50, regex = NUL, width = 20, power = 2, colour = brewer.pal(9, "Spectral") %>% rev(), ...) {
+heatmap_enrich2 <- function(
+    x,
+    foldChange,
+    wrap = 50,
+    regex = NUL,
+    width = 20,
+    power = 2,
+    FDR = 0.05,
+    colour = brewer.pal(9, "Spectral") %>% rev(),
+    ...
+) {
     filter_gsea(x, regex = regex, FDR = FDR, width = width) %>%
         heatplot(
             foldChange = foldChange,
