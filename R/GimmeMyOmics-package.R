@@ -1,8 +1,7 @@
-#' @import AnnotationHub ComplexHeatmap DESeq2 GimmeMyCluster GimmeMyPlot GenomicRanges Seurat Signac clustree cowplot e1071 enrichplot ggplot2 ggrepel irlba janitor kableExtra org.Hs.eg.db rlist RColorBrewer scales stringi tidyverse tximport utils
-#' @rawNamespace import(biomaRt, except = select)
-#' @rawNamespace import(clusterProfiler, except = rename)
-#' @rawNamespace import(reshape, except = stamp)
-#' @rawNamespace import(rstatix, except = make_clean_names)
-#' @importFrom magrittr %>% set_rownames
+#' @import dplyr GimmeMyCluster GimmeMyPlot e1071 enrichplot ggplot2 ggraph ggrepel irlba magrittr
+#' @import pheatmap rlist RColorBrewer scales sf stringi stringr tidyverse utils
+#' @rawNamespace import(DESeq2, except = desc)
+#' @rawNamespace import(clusterProfiler, except = c(rename, mutate))
+#' @rawNamespace import(reshape, except = c(stamp, rename))
 #' @keywords internal
 "_PACKAGE"

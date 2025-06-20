@@ -8,38 +8,32 @@ License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
-Imports: 
-    AnnotationHub,
-    biomaRt,
+Imports:
     clusterProfiler,
-    clustree,
-    ComplexHeatmap,
-    cowplot,
     DESeq2,
+    dplyr,
     e1071,
     enrichplot,
-    GenomicRanges,
     ggplot2,
+    ggraph,
     ggrepel,
     GimmeMyCluster,
     GimmeMyPlot,
     irlba,
-    janitor,
-    kableExtra,
     magrittr,
-    org.Hs.eg.db,
+    pheatmap,
     RColorBrewer,
     reshape,
     rlist,
-    rstatix,
     scales,
-    Seurat,
-    Signac,
+    sf,
     stringi,
-    tximport
+    stringr
 Suggests:
-    Glimma,
+    biomaRt,
+    org.Hs.eg.db,
     org.Mm.eg.db,
+    kableExtra,
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
