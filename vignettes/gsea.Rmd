@@ -16,14 +16,25 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 set.seed(123)
-library(GimmeMyOmics)
-org <- "org.Hs.eg.db"
-source("R/utils_enrich.R")
-source("R/utils_network.R")
+library("GimmeMyOmics")
+library("clusterProfiler")
+library("enrichplot")
+# source("R/utils_enrich.R")
+# source("R/utils_network.R")
+org <- "hsa"
+method <- "gsea"
+label_x <- "NES"
+org_lib <- "org.Hs.eg.db"
+# org <- "mmu"
+# method <- "kegg"
+# label_x <- "generatio"
+# org_lib <- "org.Mm.eg.db"
+library(org_lib, character.only = TRUE)
+select <- dplyr::select
 ```
 
 # Data preparation
-```{r}
+```{r, eval=FALSE}
 # metric <- "pfc"
 # metric <- "ranked_padj"
 metric <- "log2FoldChange"
@@ -37,30 +48,86 @@ length(de_genes_ranked)
 ```
 
 # GSEA
-```{r}
-gse_go <- gseGO(
-      de_genes_ranked, 
+```{r, eval=FALSE}
+enrichment <- gseGO(
+      de_genes_ranked,
+      # universe = names(de_genes_ranked),
       ont = "ALL",
-      OrgDb = get(org),
+      OrgDb = get(org_lib),
       keyType = "ENSEMBL",
       verbose = FALSE
       ) %>%
-      setReadable(org, 'ENSEMBL') %>%
+      setReadable(org_lib, 'ENSEMBL') %>%
     suppressWarnings() %>%
     invisible()
-# saveRDS(gse_go, file = file.path(path, paste0("gse_go", project_name, ".RDS")))
-# gse_go <- readRDS(file.path(path, paste0("gse_go", project_name, ".RDS")))
+
+use_data(enrichment, overwrite = TRUE)
+# saveRDS(enrichment, file = file.path(path, paste0("gse_go", project_name, ".RDS")))
+# enrichment <- readRDS(file.path(path, paste0("gse_go", project_name, ".RDS")))
 ```
+
+# ORA
+## Enrichr
+```{r, eval=FALSE}
+library("enrichR")
+setEnrichrSite("Enrichr")
+dbs <- c("GO_Molecular_Function_2025", "GO_Biological_Process_2025",
+         "Orphanet_Augmented_2021", "WikiPathway_2024_Human", 
+         "MSigDB_Hallmark_2020", "Reactome_2022")
+
+dbs <- listEnrichrDbs()
+mouse_dbs <- dbs[grep("Mouse|MGI|mmusculus", dbs$libraryName, ignore.case = TRUE), ]
+mouse_dbs$Year <- as.numeric(str_extract(mouse_dbs$libraryName, "20\\d{2}"))
+mouse_dbs$BaseName <- trimws(gsub("20\\d{2}", "", mouse_dbs$libraryName)) %>% str_remove("_$")
+dbs <- mouse_dbs %>%
+  group_by(BaseName) %>%
+  filter(is.na(Year) | Year == max(Year, na.rm = TRUE)) %>%
+  ungroup() %>%
+  pull(libraryName)
+
+deg <- top_genes(dea_pretty, log2(1.5), 0.1)
+l_enrichment <- enrichr(deg, dbs)#,  background = pull(dea_pretty, "gene_name"))
+
+plot_enrich(l_enrichment[[1]], method = "enrichr")
+```
+## ClusterprofilR
+```{r, eval=FALSE}
+# deg <- filter(deg0, cluster == 6) %>% ungroup() %>% pull(gene)
+deg <- top_genes(dea_pretty, log2(1.5), 0.1)
+deg_entrez <- deg %>% bitr("ALIAS", "ENTREZID", org_lib) %>% pull(2)
+
+TERM2GENE <- term2gene_enrichr("Mouse_Gene_Atlas")
+# func <- enrichKEGG
+func <- enricher
+
+enrichment <- func(
+  deg_entrez,
+  TERM2GENE = TERM2GENE,
+  pvalueCutoff = 1,
+  qvalueCutoff = 1,
+  organism = org,
+  # organism = "Mus musculus"
+  # OrgDb = get(org_lib),
+  # universe = pull(dea_pretty, "gene_name")
+)  %>%
+      setReadable(org_lib, 'ENTREZID')
+
+path2code_kegg <- read_tsv("https://rest.kegg.jp/list/pathway/mmu", FALSE)  %>%
+  mutate(X1 = str_remove_all(X1, ".*\\:"))
+```
+
 
 # All pathways
 ```{r}
-plot_enrich(gse_go, type = "gsea", label_x = "NES")# + 
+data("gse_go")
+enrichment <- gse_go
+plot_enrich(enrichment, method = method, label_x = label_x)# + 
 # scale_fill_gradientn(
 #     labels = function(x) label_pvalue()(x),
 #     breaks = c(0.002, 0.001, 0),
 #     name = "FDR",
 #     limits = c(0, 0.003),
-#     colours = c(GimmeMyPlot:::palette_discrete()[1], "gray50", GimmeMyPlot:::palette_discrete()[2])
+#     colours = c(palette_discrete()[1], "gray50", palette_discrete()[2])
 # ) +
 #     scale_size_continuous(
 #         range = c(5, 12) * 0.6,
@@ -69,39 +136,51 @@ plot_enrich(gse_go, type = "gsea", label_x = "NES")# +
 #         name = "# Leading genes",
 #         limits = c(10, 300)
 #     )
-(table_gsea <- print_enrich(gse_go, type = "gsea"))
+(table_gsea <- print_enrich(enrichment, method = method))
 ```
 
 # Targeting all immunity 
 ```{r, message = FALSE}
-plot_enrich(gse_go, label_x = "NES", type = "gsea", regex = paste(name_immu2, collapse = "|"))
-print_enrich(gse_go, type = "gsea", regex = paste(name_immu2, collapse = "|"))
+plot_enrich(enrichment, label_x = label_x, method = method, regex = pathway_keywords()$immunity_full)
+print_enrich(enrichment, method = method, regex = pathway_keywords()$immunity_full)
 ```
 
 # Targeting only cytokines
 ```{r}
-plot_enrich(gse_go, label_x = "NES", type = "gsea", regex = paste(name_immu0, collapse = "|"))
-plot_enrich(gse_go, label_x = "NES", type = "gsea", regex = paste(cytok_paths, collapse = "|"), n = 25)
-print_enrich(gse_go, type = "gsea", regex = paste(cytok_paths, collapse = "|"))
+plot_enrich(enrichment, label_x = label_x, method = method, regex = pathway_keywords()$immunity)
+plot_enrich(enrichment, label_x = label_x, method = method, regex = pathway_keywords()$cytokine_full, n = 25)
+print_enrich(enrichment, method = method, regex = pathway_keywords()$cytokine_full)
 ```
 
 # Targeting only cell processes
 ```{r, eval = FALSE}
-plot_enrich(gse_go, label_x = "NES", type = "gsea", regex = paste(cell_paths, collapse = "|"))
-print_enrich(gse_go, type = "gsea", regex = paste(cell_paths, collapse = "|"))
+plot_enrich(enrichment, label_x = label_x, method = method, regex = pathway_keywords()$cell)
+print_enrich(enrichment, method = method, regex = pathway_keywords()$cell)
 ```
 
 # Targeting a specific pathway
 ```{r}
-(targeted_paths <- print_enrich(gse_go, type = "gsea", regex = "eutrophil activation"))
+data("dea_pretty")
+(targeted_paths <- print_enrich(enrichment, method = method, regex = "eutrophil activation"))
 gene_path <- targeted_paths %>%
     select(Genes) %>% 
     map(~ str_split(., ";") %>% unlist() %>% sort()) %>% 
     pluck(1)
 
 dea_path <- filter(dea_pretty, gene_name %in% gene_path)
-plot_heatmap(dea_path, metadata_samples, count_normalized, cutree_cols = 2)
+```
 
+
+```{r, eval = FALSE}
+data("dea")
+count_normalized <- vst(dea, blind = FALSE)
+plot_heatmap(dea_path, metadata_samples, count_normalized, cutree_cols = 2)
+```
+
+
+```{r}
+fc_threshold <- log2(1.5)
+p_threshold <- .05
 top_genes <- top_genes(
     dea_pretty,
      fc_threshold = fc_threshold,
@@ -127,9 +206,7 @@ volcano_plot(
     ) + xlab("") + ylab("")
 ```
 
-```{r}
-library("GimmeMyCluster")
-
+```{r, eval = FALSE}
 count_normalized <- vst(dea, blind = FALSE)
 
 extract_normalized_genes <- function(x, count_normalized, metadata_samples) {
@@ -153,6 +230,14 @@ select(top_cluster_genes, 1) %>%
     )
 
 gene <- filter(dea_pretty, gene_name == rownames(top_cluster_genes)[1])
+
+conditions <- dea@design %>%
+  as.character() %>%
+  .[2] %>% 
+  str_split("[+:]") %>%
+  unlist() %>%
+  str_trim() %>%
+  unique()
 gene_per_sample <- plotCounts(
     dea,
     pull(gene, "ensembl_gene_id"),
@@ -176,8 +261,8 @@ list.map(
 ```
 
 # Multiple related pathways
-```{r}
-(targeted_paths <- print_enrich(gse_go, type = "gsea", regex = "eutrophil"))
+```{r, eval = FALSE}
+(targeted_paths <- print_enrich(enrichment, method = method, regex = "eutrophil"))
 l_path <- list.map(
     pull(targeted_paths, Description), 
     f(i) ~ filter(targeted_paths, Description == i) %>%
@@ -192,7 +277,7 @@ filter(dea_pretty, `gene_name` %in% gene_path) %>%
     plot_heatmap(metadata_samples, count_normalized, cutree_cols = 2)
 ```
 
-```{r}
+```{r, eval = FALSE}
 gene_ont <- "gene_name"
 gene_path <- list_table(l_path) %>% rownames()
 gene_path0 <- #l_de2[[1]] %>%
@@ -233,27 +318,31 @@ list.map(l_path, f(i) ~i %>% .[. %in% common_genes]) %>%
 
 # Pathway network
 ```{r}
-gse_go2 <- remove_cellcycle(gse_go) %>%
-  filter_gsea(regex = paste(name_immu2, collapse = "|")) %>%
+enrichment2 <- filter_gsea(
+    enrichment, 
+    regex = pathway_keywords()$cellcycle,
+    negate = TRUE
+  ) %>%
+  filter_gsea(regex = pathway_keywords()$immunity_full) %>%
   pairwise_termsim() %>% 
   clusterProfiler::simplify(cutoff = 0.9)
 ```
 
 ```{r}
 map_enrich(
-    gse_go2,
+    enrichment2,
     cluster.params = list(cluster = FALSE),
-    regex = paste(name_immu, collapse = "|"),
+    regex = pathway_keywords()$immunity_additional,
     showCategory = 50,
     cex.params = list(category_label =  0.9, line = 0.5),
     cex = 0.7
 ) %>% suppressMessages()
 ```
 
-```{r}
+```{r, eval = FALSE}
 tree_enrich(
-    gse_go2,
-    regex = paste(name_immu0, collapse = "|"),
+    enrichment2,
+    regex = pathway_keywords()$immunity,
     showCategory = 50,
     verbose = FALSE,
     label_words_n = 2,
@@ -263,31 +352,31 @@ tree_enrich(
 
 ```{r}
 network_enrich(
-    gse_go2,
-    foldChange = de_genes_ranked,
-    regex = paste(cell_paths, collapse = "|"),
+    enrichment2,
+    foldChange = enrichment2@geneList,
+    regex = pathway_keywords()$cell,
     showCategory = 20,
     col_highlight = brewer.pal(8, "Reds") %>% rev(),
     cex = 0.5
 ) %>% suppressMessages()
 ```
 
-```{r}
+```{r, eval = FALSE}
 ridge_gsea(
-    gse_go2,
-    regex = paste(cell_paths, collapse = "|"),
+    enrichment2,
+    regex = pathway_keywords()$cell,
     width = 100
 ) %>% suppressMessages()
 ```
 
 ```{r}
 gsea_enrich(
-    gse_go2,
+    enrichment2,
     regex = "eutrophil",
-    geneSetID = seq(5),
+    geneSetID = seq(3),
     title = "Neutrophil activity"
 )
-gsea_enrich(gse_go2, regex = "eutrophil", width = 100)
+gsea_enrich(enrichment2, regex = "eutrophil", width = 100)
 ```
 
 ```{r}

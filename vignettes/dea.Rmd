@@ -16,8 +16,14 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 set.seed(123)
-source("R/utils_theme.R")
-source("R/utils_bulk.R")
+library("GimmeMyOmics")
+library("GimmeMyPlot")
+library("DESeq2")
+library("pheatmap")
+library("magrittr")
+library("RColorBrewer")
+# source("R/utils_theme.R")
+# source("R/utils_bulk.R")
 genome_species <- "hsapiens"
 genome_version <- 113
 ```
@@ -76,6 +82,7 @@ nrow(counts(dea_df)) / nrow(gene_count) * 100
 dea <- DESeq(dea_df, quiet = TRUE)
 resultsNames(dea)
 sizeFactors(dea)
+# use_data(dea, overwrite = TRUE)
 # coef(dea) %>% kable0() %>% head()
 # saveRDS(dea, file = file.path(path, paste0("dea", project_name, ".RDS")))
 # dea <- readRDS(file.path(path, paste0("dea", project_name, ".RDS")))
@@ -97,8 +104,8 @@ conditions <- dea@design %>%
   str_trim() %>%
   unique()
 plotPCA(count_normalized, intgroup = conditions[-3]) +
-  theme_custom() + 
-  scale_color_discrete(type = GimmeMyPlot:::palette_discrete()) +
+  GimmeMyPlot::theme_custom() + 
+  scale_color_discrete(type = palette_discrete()) +
   stat_ellipse()
 ```
 
@@ -154,7 +161,7 @@ table(pull(dea_pretty, "Expression")) %>%
 ```
 
 # Volcano plot
-```{r, message = FALSE, warning = FALSE}
+```{r, message = FALSE, warning = FALSE, fig.width=7, fig.height=5}
 top_genes <- top_genes(
     dea_pretty,
      fc_threshold = fc_threshold,
@@ -178,11 +185,11 @@ volcano_plot(
 ```
 
 
-```{r, message=FALSE, warning=FALSE}
+```{r, message=FALSE, warning=FALSE, eval = FALSE}
 plot_counts <- function(x) {
   list_cbind0 <- function(x) {
   row_names <- lapply(x, rownames)
-  x <- list.map(x, f(i) ~ as.data.frame(i))
+  x <- map(x, ~ as.data.frame(.))
   tmp <- sapply(x, nrow)
   for (i in seq(length(tmp))) {
     add <- NULL
@@ -215,9 +222,9 @@ df <- plotCounts(
     returnData = TRUE
 )
 
-list.map(
+ map(
         pull(df, "condition") %>% unique(),
-        f(x) ~ filter(df, condition == x) %>% select(count)
+        ~ filter(df, condition == .) %>% select(count)
     ) %>%
     list_cbind0() %>%
     set_colnames(pull(df, "condition") %>% unique()) %>% 
