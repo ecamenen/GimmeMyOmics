@@ -23,7 +23,8 @@
 #'
 #' @examples
 #' # Example DEA results
-#' ensembl_gene_id <- c("ENSG00000141510", "ENSG00000012048", "ENSG00000146648", "ENSG00000157764", "ENSG00000133703")
+#' ensembl_gene_id <- c("ENSG00000141510", "ENSG00000012048", "ENSG00000146648",
+#'  "ENSG00000157764", "ENSG00000133703")
 #' dea_results <- data.frame(
 #'   log2FoldChange = c(2.0, -1.8, 0.5, -0.2, 3.0),
 #'   padj = c(0.001, 0.01, 0.1, 0.06, 0.0001)
@@ -41,24 +42,30 @@
 #'
 #' # Custom thresholds
 #' format_dea(dea_results, metadata_genes, fc_threshold = log2(1.5), p_threshold = 0.01)
+#' @export
 format_dea <- function(
     x,
-    metadata_genes,
+    metadata_genes = NULL,
     fc_threshold = 1,
     p_threshold = 0.05
 ) {
-    required_cols <- c("ensembl_gene_id", "gene_name")
-    if (!all(required_cols %in% colnames(metadata_genes))) {
-        stop("metadata_genes must contain the columns: ", paste(required_cols, collapse = ", "))
-    }
-    x %>%
+    # required_cols <- c("ensembl_gene_id", "gene_name")
+    # if (!all(required_cols %in% colnames(metadata_genes))) {
+    #     stop("metadata_genes must contain the columns: ", paste(required_cols, collapse = ", "))
+    # }
+    tmp <- x %>%
         as.data.frame() %>%
-        rownames_to_column("ensembl_gene_id") %>%
-        left_join(
+        rownames_to_column("ensembl_gene_id")
+
+    if (!is.null(metadata_genes)) {
+        tmp <- left_join(
+            tmp,
             metadata_genes,
             by = "ensembl_gene_id"
-        ) %>%
+        )
+    }
         mutate(
+            tmp,
             log10p = -log10(padj),
             gene_name = str_remove_all(gene_name, "_\\d+"),
             Expression = case_when(
@@ -77,7 +84,7 @@ format_dea <- function(
 #'
 #' Filters the top differentially expressed genes from a DEA result set based on fold change, adjusted p-value, and a combined ranking metric.
 #'
-#' @param res A `data.frame` or `tibble` containing DEA results. Must include `log2FoldChange` and `padj` columns.
+#' @param x A `data.frame` or `tibble` containing DEA results. Must include `log2FoldChange` and `padj` columns.
 #' @param fc_threshold Numeric, minimum absolute log2 fold change required for inclusion.
 #' @param p_threshold Numeric, maximum adjusted p-value allowed.
 #' @param n Integer, number of top genes to return. Default is `1000`.
@@ -107,7 +114,8 @@ format_dea <- function(
 #' top_genes(dea_results)
 #'
 #' # Custom thresholds and return rankings
-#' top_genes(dea_results, fc_threshold = log2(1.5), p_threshold = 0.01, rank = TRUE, var = "log2FoldChange")
+#' top_genes(dea_results, fc_threshold = log2(1.5), p_threshold = 0.01, 
+#' rank = TRUE, var = "log2FoldChange")
 #'
 #' @export
 top_genes <- function(
@@ -177,7 +185,7 @@ logx_trans <- function(x, base = 2) {
 }
 
 format_labels <- function(x) {
-    labels <- scales::label_number_auto()(x)
+    labels <- label_number_auto()(x)
     x <- as.character(x)
     x[x == "0.0"] <- "0"
     x[x == "1e+00"] <- "1"
@@ -215,9 +223,6 @@ format_labels <- function(x) {
 #' @return A `ggplot2` object representing the volcano plot.
 #'
 #' @examples
-#' library(ggplot2)
-#' library(ggrepel)
-#'
 #' # Example DEA results
 #' dea_results <- data.frame(
 #'   gene_name = c("TP53", "BRCA1", "EGFR", "BRAF", "KRAS"),
@@ -324,8 +329,6 @@ volcano_plot <- function(
 #'   - `padj`: Numeric, the adjusted p-value (FDR).
 #'   - `Expression`: Factor, the expression category ("Up-regulated", "Down-regulated", or "ns").
 #' @param base Numeric, the base for fold change calculation. Default is `2` (log2 fold change). Use `exp` for natural log fold change.
-#' @param name Logical, whether to include full gene names. Default is `FALSE`.
-#' @param metadata_genes Optional, a metadata table for retrieving full gene names.
 #' @param ... Additional arguments passed to `top_genes()` for filtering and ranking.
 #'
 #' @details
@@ -341,7 +344,8 @@ volcano_plot <- function(
 #'
 #' @examples
 #' # Example DEA results
-#' ensembl_gene_id <- c("ENSG00000141510", "ENSG00000012048", "ENSG00000146648", "ENSG00000157764", "ENSG00000133703")
+#' ensembl_gene_id <- c("ENSG00000141510", "ENSG00000012048", "ENSG00000146648",
+#'  "ENSG00000157764", "ENSG00000133703")
 #' dea_results <- data.frame(
 #'   log2FoldChange = c(2.0, -1.8, 0.5, -0.2, 3.0),
 #'   padj = c(0.001, 0.01, 0.1, 0.06, 0.0001)
@@ -352,7 +356,9 @@ volcano_plot <- function(
 #' metadata_genes <- data.frame(
 #'   ensembl_gene_id = ensembl_gene_id,
 #'   gene_name = c("TP53", "BRCA1", "EGFR", "BRAF", "KRAS"),
-#'   description = c("tumor protein p53", "BRCA1 DNA repair associated", "KRAS proto-oncogene, GTPase", "epidermal growth factor receptor", "B-Raf proto-oncogene")
+#'   description = c("tumor protein p53", "BRCA1 DNA repair associated",
+#'   "KRAS proto-oncogene, GTPase", "epidermal growth factor receptor", 
+#'   "B-Raf proto-oncogene")
 #' )
 #'
 #' # Format DEA results
@@ -397,7 +403,7 @@ print_dea <- function(x, base = 2, ...) {
 #' @return A character string containing the formatted gene description, or `NA` if no valid gene ID is found.
 #'
 #' @examples
-#' metadata_genes <- tibble::tibble(
+#' metadata_genes <- tibble(
 #'   ensembl_gene_id = c("ENSG00000141510", "ENSG00000272398"),
 #'   entrezgene_id = c(7157, NA),
 #'   gene_name = c("TP53", "Unknown Gene")
@@ -442,7 +448,7 @@ ncbi_description <- function(x, metadata_genes, database = "ensembl_gene_id") {
             str_remove_all("^belongs? (to )?") %>%
             str_remove_all(". \\[.*\\]$") %>%
             str_trim() %>%
-            GimmeMyPlot:::to_title() %>%
+            to_title() %>%
             paste0(pull(gene_subset, "gene_name"), ": ", .)
     } else {
         return(paste0(pull(gene_subset, "gene_name"), ": Description unavailable"))
@@ -470,10 +476,7 @@ ncbi_description <- function(x, metadata_genes, database = "ensembl_gene_id") {
 #' @return A heatmap visualization of gene expression.
 #'
 #' @examples
-#' # Example usage
-#' library(SummarizedExperiment)
-#' library(S4Vectors)
-#'
+#' library(DESeq2)
 #' # Create example counts matrix
 #' nrows <- 5
 #' ncols <- 3
@@ -495,12 +498,14 @@ ncbi_description <- function(x, metadata_genes, database = "ensembl_gene_id") {
 #'
 #' # Metadata for samples
 #' metadata_samples <- data.frame(sample_id = paste0("Sample", 1:ncols))
+#' tops <- top_genes(dea_results)
+#' tops$ensembl_gene_id <- tops$gene_name
 #'
 #' # Select top genes and plot heatmap
-#' plot_heatmap(top_genes(dea_results), metadata_samples, count_normalized)
+#' plot_heatmap(tops, metadata_samples, count_normalized)
 #'
 #' # Transposed heatmap
-#' plot_heatmap(top_genes(dea_results), metadata_samples, count_normalized, transpose = TRUE)
+#' plot_heatmap(tops, metadata_samples, count_normalized, transpose = TRUE)
 #'
 #' @export
 plot_heatmap <- function(
@@ -527,7 +532,7 @@ plot_heatmap <- function(
         as.matrix(gene_counts),
         clustering_distance_rows = geneDists,
         clustering_distance_cols = sampleDists,
-        col = colour,
+        color = colour,
         ...
     )
 }
