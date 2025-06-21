@@ -1,54 +1,13 @@
-library(stringi)
-
-#' Cuts a sentence to a given number of characters and leaves the words as integers
-#' @example str_trunc1("Hi there, I'm a sentence to format.")
-str_trunc1 <- function(x, n = 20, w = " ") {
-    x0 <- strsplit(x, w)[[1]]
-    lapply(seq(length(x0)), function(i) str_trunc0(x, i, w)) %>%
-        detect(function(x) str_length(x) <= n, .dir = "backward")
-}
-
-#' Cuts a sentence to a given number of words
-#' @example str_trunc0("Hi there, I'm a sentence to format.")
-str_trunc0 <- function(x, n = 5, w = " ") {
-    strsplit(x, w)[[1]] %>%
-        .[1:n] %>%
-        paste(collapse = w)
-}
-
-str_trunc2 <- function(x, n = 20) {
-    sapply(
-        x,
-        function(i) {
-            i <- str_trim(i)
-            res <- str_trunc1(i, n)
-            if (is.null(res))
-                res <- str_trunc1(i, n, "-")
-            if (is.null(res))
-                return(res)
-            if (str_width(res) < str_width(i))
-                paste0(res, "...")
-            else
-                res
-        }
-    ) %>% unname()
-}
-
 #' Displays Enrichment
 #'
-#' Formats and filters enrichment analysis results from various sources, including:
-#' - **Enrichr** (`enrichR` package)
-#' - **GSEA** (`clusterProfiler` package)
-#' - **Limma** (`limma` package)
+#' Formats and filters enrichment analysis results from enrichment analysis libraries:
+#' `enrichR` and `clusterProfiler`.
 #'
 #' @param x An enrichment results.
-#' @param path2gene A **named list** mapping pathways to genes, **required for `enrichr` method**.
-#'   The list should have pathway names as **keys** and **character vectors of genes** as values.
 #' @param method A character string specifying the enrichment analysis method. Options are:
 #'   - `"enrichr"`: Enrichr results (**requires `path2gene`**, from `enrichR` package).
 #'   - `"gsea"`: Gene Set Enrichment Analysis (GSEA) results (from `clusterProfiler` package).
-#'   - `"limma"`: Limma-based enrichment results (from `limma` package).
-#'   - `"other"`: Other enrichment result formats.
+#'   - `"ora"`: Over-enrichment Analysis (GSEA) results (from `clusterProfiler` package).
 #' @param regex A character vector of regular expressions to filter terms by their descriptions.
 #' @param pval A numeric threshold for filtering results based on FDR-adjusted p-values.
 #'
@@ -68,26 +27,20 @@ str_trunc2 <- function(x, n = 20) {
 #'   - Additional columns depending on the enrichment method (e.g., `NES`, `ID`).
 #'
 #' @examples
-#' # Required libraries
-#' library(stringr)
-#'
-#' # Example 1: Enrichr results (Requires a named list as path2gene)
+#' # Example 1: Enrichr results
 #' path_name <- c("Neutrophil degranulation", "Macrophage migration")
 #' pval <- c(2.7e-02, 2.89e-03)
 #' genes <- c("ITGB2/ANXA3/STXBP2/SPI1/ITGAM/CD177", "MAPK3/AKIRIN1/CX3CR1/CNN2/LGALS3/B4GALT1/C3AR1")
 #' ids <- c("GO:0043312", "GO:1905517")
-#'
-#' path2gene <- data.frame(
-#'   Pathway = rep(path_name, c(6, 7)),  # Repeat each pathway for each gene
-#'   Gene = unlist(strsplit(paste(genes, collapse = "/"), "/"))
-#' )
+#' 
 #' enrichr_results <- data.frame(
-#'   Description = path_name,
-#'   p.adjust = pval,
-#'   geneID = genes,
-#'   ID = ids
+#'   Term = path_name,
+#'   Adjusted.P.value = pval,
+#'   Overlap = c("6/12", "7/17"),
+#'   ID = ids,
+#'   Genes = gsub("/", ";", genes)
 #' )
-#' print_enrich(enrichr_results, method = "enrichr", path2gene = path2gene)
+#' print_enrich(enrichr_results, method = "enrichr")
 #'
 #' # Example 2: GSEA results (from clusterProfiler)
 #' gsea_results <- data.frame(
@@ -100,16 +53,7 @@ str_trunc2 <- function(x, n = 20) {
 #' )
 #' print_enrich(gsea_results, method = "gsea")
 #'
-#' # Example 3: Limma enrichment results (from limma)
-#' limma_results <- data.frame(
-#'   Description = path_name,
-#'   Adjusted.P.value = pval,
-#'   Overlap = c("6/12", "7/17"),
-#'   ID = ids
-#' )
-#' print_enrich(limma_results, method = "limma")
-#'
-#' # Example 4: Over-representation enrichment results (from clusterProfiler)
+#' # Example 3: Over-representation enrichment results (from clusterProfiler)
 #' ora_results <- data.frame(
 #'   Description = path_name,
 #'   p.adjust = pval,
@@ -121,62 +65,59 @@ str_trunc2 <- function(x, n = 20) {
 #' print_enrich(ora_results)
 #'
 #' @export
-print_enrich <- function(x, path2gene = NULL, method = "enrichr", regex = NULL, pval = 0.05) {
+print_enrich <- function(x, method = "ora", regex = NULL, pval = 0.05) {
     x <- as_tibble(x)
 
-    if (method == "enrichr" && is.null(path2gene)) {
-        stop("`path2gene` parameter must not be empty for Enrichr.")
-    }
-
-    if (!is.null(path2gene)) {
-        x <- x %>% mutate(
-            x,
-            bg = list.mapv(
-                x[[1]] %>% as.data.frame() %>% pull(1),
-                f(i) ~
-                    path2gene[pull(path2gene, 1) %in% i, ] %>%
-                    pull(2) %>%
-                    length()
-            )
-        )
-    }
+    # if (method == "enrichr" && is.null(path2gene)) {
+    #     stop("`path2gene` parameter must not be empty for Enrichr.")
+    # }
+    # 
+    # if (!is.null(path2gene)) {
+    #     x <- x %>% mutate(
+    #         x,
+    #         bg = list.mapv(
+    #             x[[1]] %>% as.data.frame() %>% pull(1),
+    #             f(i) ~
+    #                 path2gene[pull(path2gene, 1) %in% i, ] %>%
+    #                 pull(2) %>%
+    #                 length()
+    #         )
+    #     )
+    # }
 
     x <- switch(
         method,
         "enrichr" = x %>%
-            mutate(
-                FDR = p.adjust,
-                Genes = str_replace_all(geneID, "/", ";")
-            ) %>%
-            select(Description, FDR, Genes, ID),
+          mutate(
+            Description = Term,
+            FDR = Adjusted.P.value,
+            Count = as.numeric(str_split_fixed(Overlap, "/", 2)[, 1]),
+            bg = as.numeric(str_split_fixed(Overlap, "/", 2)[, 2])
+          ),
         "gsea" = x %>%
             mutate(
                 FDR = p.adjust,
-                Count = sapply(stri_split_fixed(core_enrichment, "/"), function(genes) length(unique(genes))),
+                Count = sapply(stri_split_fixed(core_enrichment, "/"), function(i) length(unique(i))),
                 bg = setSize,
-                Genes = sapply(stri_split_fixed(core_enrichment, "/"), function(genes) paste(unique(genes), collapse = ";"))
-            ),
-        "limma" = x %>%
-            mutate(
-                FDR = Adjusted.P.value,
-                Count = as.numeric(str_split_fixed(Overlap, "/", 2)[, 1]),
-                bg = as.numeric(str_split_fixed(Overlap, "/", 2)[, 2]),
-                Genes = str_replace_all(Overlap, "/", ";")
-            ),
-        x %>% mutate(
+                Genes = sapply(stri_split_fixed(core_enrichment, "/"), function(i) paste(unique(i), collapse = ";"))
+            ) %>%
+            rename(pval = "p.adjust"),
+        x %>%
+          mutate(
             x,
             FDR = p.adjust,
             Count = str_split_fixed(GeneRatio, "/", 2) %>% .[, 1] %>% as.numeric(),
             bg = str_split_fixed(BgRatio, "/", 2) %>% .[, 1] %>% as.numeric(),
             Genes = str_replace_all(geneID, "/", ";")
-        )
+        ) %>%
+          select(-geneID)
     )
 
     if (!is.null(regex)) {
         x <- x %>% filter(str_detect(Description, paste(regex, collapse = "|")))
     }
 
-    x <- x %>% mutate(Description = GimmeMyPlot:::to_title(Description))
+    x <- x %>% mutate(Description = to_title(Description) %>% str_remove(" - .*"))
 
     res <- x %>%
         filter(FDR <= pval) %>%
@@ -188,13 +129,13 @@ print_enrich <- function(x, path2gene = NULL, method = "enrichr", regex = NULL, 
         select(Description, FDR, `Nb DEG`, `Nb genes`, `DEG/Genes`, Genes, contains(c("NES", "ID")))
 
     if (method == "gsea") {
-        res <- res %>%
+        res %>%
             rename_with(~ str_replace_all(., "DEG", "Enriched"), contains("DEG")) %>%
             relocate("NES", .after = "FDR") %>%
             relocate("ID", .after = "Description")
+    } else {
+      res
     }
-
-    return(res)
 }
 
 theme_enrich <- function(
@@ -260,7 +201,7 @@ theme_enrich0 <- function(
         scale_size_continuous(
             range = range,
             breaks = function(x) unique(round(pretty(x, n = 4))),
-            labels = scales::label_number(accuracy = 1),
+            labels = label_number(accuracy = 1),
             name = title_size
         ) +
         guides(
@@ -315,37 +256,66 @@ theme_enrich0 <- function(
 #'
 #' Visualizes the results of enrichment analysis (e.g., GO, GSEA, KEGG, or limma) using dot plots. The function supports customization of the plot appearance, including colors, labels, and titles.
 #'
-#' @param x A `data.frame` or `tibble` containing enrichment analysis results. Expected columns depend on the `type` parameter:
-#'   - For `type = "go"`: `Description`, `p.adjust`, `GeneRatio`, `BgRatio`.
-#'   - For `type = "gsea"`: `Description`, `p.adjust`, `core_enrichment`, `setSize`.
-#'   - For `type = "ora"`: `Description`, `p.adjust`, `GeneRatio`, `BgRatio`.
+#' @inheritParams print_enrich
+#' @inheritParams network_enrich
 #' @param n Integer, the number of top terms to display.
-#' @param title Character, the title of the plot.
-#' @param type Character, the type of enrichment analysis. Supported values are:
-#'   - `"go"`: Gene Ontology (GO) enrichment.
-#'   - `"gsea"`: Gene Set Enrichment Analysis (GSEA).
-#'   - `"kegg"`: KEGG pathway enrichment.
 #' @param cex Numeric, the scaling factor for text size.
 #' @param ratio Numeric, the ratio for adjusting plot limits.
 #' @param width Integer, the maximum width (in characters) for term labels.
-#' @param path2gene Optional, a `data.frame` or `tibble` mapping pathways to genes. Required for `type = "kegg"` if `GeneRatio` is not provided.
+#' @param path2gene Optional, a `data.frame` or `tibble` mapping pathways to genes. Required for `method = "kegg"` if `GeneRatio` is not provided.
 #' @param colour Character vector of length 3, specifying the colors for the gradient fill of the points.
-#' @param regex Character, a regular expression to filter terms by their description.
-#' @param label_x Character, the label for the x-axis. Default is `"generatio"` (gene ratio). For `type = "gsea"`, this can be changed to another column name.
+#' @param label_x Character, the label for the x-axis. Default is `"generatio"` (gene ratio). For `method = "gsea"`, this can be changed to another column name.
 #'
 #' @details
 #' The function performs the following steps:
-#' 1. Filters and processes the input data based on the `type` parameter.
+#' 1. Filters and processes the input data based on the `method` parameter.
 #' 2. Computes the gene ratio for each term.
 #' 3. Truncates and formats term labels for readability.
 #' 4. Ranks terms by significance and selects the top `n` terms.
 #' 5. Generates a dot plot with term labels on the y-axis, gene ratio on the x-axis, and point size proportional to the number of genes.
 #'
-#' For `type = "gsea"`, the function also extracts the number of leading genes from the `core_enrichment` column.
+#' For `method = "gsea"`, the function also extracts the number of leading genes from the `core_enrichment` column.
 #'
 #' @return A `ggplot` object representing the enrichment plot.
 #'
 #' @examples
+#' # Example 1: Enrichr results (Requires a named list as path2gene)
+#' path_name <- c("Neutrophil degranulation", "Macrophage migration")
+#' pval <- c(2.7e-02, 2.89e-03)
+#' genes <- c("ITGB2/ANXA3/STXBP2/SPI1/ITGAM/CD177", "MAPK3/AKIRIN1/CX3CR1/CNN2/LGALS3/B4GALT1/C3AR1")
+#' ids <- c("GO:0043312", "GO:1905517")
+#'
+#' enrichr_results <- data.frame(
+#'   Term = path_name,
+#'   Adjusted.P.value = pval,
+#'   Overlap = c("6/12", "7/17"),
+#'   ID = ids,
+#'   Genes = gsub("/", ";", genes)
+#' )
+#' plot_enrich(enrichr_results, method = "enrichr")
+#'
+#' # Example 2: GSEA results (from clusterProfiler)
+#' gsea_results <- data.frame(
+#'   Description = path_name,
+#'   p.adjust = pval,
+#'   core_enrichment = genes,
+#'   setSize = c(12, 17),
+#'   NES = c(1.75, 2.01),
+#'   ID = ids
+#' )
+#' plot_enrich(gsea_results, method = "gsea")
+#'
+#' # Example 3: Over-representation enrichment results (from clusterProfiler)
+#' ora_results <- data.frame(
+#'   Description = path_name,
+#'   p.adjust = pval,
+#'   GeneRatio = c("6/12", "7/17"),
+#'   BgRatio = c("60/120", "70/140"),
+#'   geneID = genes,
+#'   ID = ids
+#' )
+#' plot_enrich(ora_results)
+#' 
 #' # Example GO enrichment results
 #' go_results <- data.frame(
 #'   Description = c("immune response", "cell cycle", "DNA repair"),
@@ -354,26 +324,12 @@ theme_enrich0 <- function(
 #'   BgRatio = c("100/1000", "150/1500", "200/2000")
 #' )
 #'
-#' # Plot GO enrichment results
-#' plot_enrich(go_results, type = "go", title = "GO Enrichment")
-#'
-#' # Example GSEA results
-#' gsea_results <- data.frame(
-#'   Description = c("inflammatory response", "apoptosis", "metabolism"),
-#'   p.adjust = c(0.001, 0.01, 0.05),
-#'   core_enrichment = c("Gene1/Gene2/Gene3", "Gene4/Gene5", "Gene6/Gene7/Gene8"),
-#'   setSize = c(100, 150, 200)
-#' )
-#'
-#' # Plot GSEA results
-#' plot_enrich(gsea_results, type = "gsea", title = "GSEA Enrichment")
-#'
 #' @export
 plot_enrich <- function(
         x,
         n = 20,
         title = NULL,
-        type = "go",
+        method = "ora",
         cex = 0.65,
         ratio = 5,
         width = 50,
@@ -387,11 +343,12 @@ plot_enrich <- function(
             str_remove_all("Genes ((posi)|(nega))tively correlated with ") %>%
             str_remove_all("\\[GeneID=\\d*\\]") %>%
             str_remove_all("([uU]ntreated )?peripheral blood mono((nuclear)|(cytes))( cells?)?( \\(PBMC\\))?( from)? ") %>%
-            str_remove_all("the ")
+            str_remove_all("the ") %>%
+            str_remove(" - .*")
     }
-    if (type == "gsea") {
+    if (method == "gsea") {
         if (!is.null(regex)) {
-            x <- filter(x, str_detect(Description, regex))
+            x <- filter_gsea(x, regex)
         }
         df <- mutate(
             x,
@@ -411,18 +368,19 @@ plot_enrich <- function(
         }
         df <- arrange(df, desc(generatio))
         x_var <- "Adjusted.P.value"
-    } else if (type == "kegg") {
+    } else if (method == "ora") {
         title_size <- "# DEG"
         label_x <- "Gene ratio"
         if (!is.null(regex)) {
-            x <- filter(x, str_detect(Description, regex))
+          x <- filter_gsea(x, regex)
         }
         df <- mutate(
             x,
             Adjusted.P.value = p.adjust,
             Term = Description %>%
                 func() %>%
-                to_title()
+                to_title(),
+            Count = str_split(genes, "/") %>% sapply(length)
         )
         if (!is.null(path2gene)) {
             n_paths <- list.mapv(
@@ -439,11 +397,11 @@ plot_enrich <- function(
             )
         }
         x_var <- "p.adjust"
-    } else if (type == "limma") {
+    } else {
         title_size <- "# DEG"
         label_x <- "Gene ratio"
         if (!is.null(regex)) {
-            x <- filter(x, str_detect(Term, regex))
+            x <- filter(x, str_detect(Term, paste(regex, collapse = "|")))
         }
         df <- mutate(
             x,
@@ -451,24 +409,11 @@ plot_enrich <- function(
             generatio = {
                 str_split(Overlap, "/") %>%
                     sapply(function(i) as.numeric(i[1]) / as.numeric(i[2]))
-            }
-        )
-        x_var <- "Adjusted.P.value"
-    } else {
-        title_size <- "# DEG"
-        label_x <- "Gene ratio"
-        if (!is.null(regex)) {
-            x <- filter(x, str_detect(Term, regex))
-        }
-        df <- mutate(
-            x,
-            Adjusted.P.value = p.adjust,
-            Term = Description %>%
-                func() %>%
-                to_title(),
-            Count = str_split_fixed(GeneRatio, "/", 2) %>% .[, 1] %>% as.numeric(),
-            bg = str_split_fixed(BgRatio, "/", 2) %>% .[, 1] %>% as.numeric(),
-            generatio = Count / bg
+            },
+            bg = str_remove_all(Overlap, ".*\\/") %>% as.numeric(),
+            Term = Term %>%
+              func() %>%
+              to_title()
         )
         x_var <- "Adjusted.P.value"
     }
@@ -478,7 +423,7 @@ plot_enrich <- function(
         df0 <- df
     df0 <- arrange(df0, abs(!!sym(x_var)))
     y <- "generatio"
-    # if (type %in% c("gsea", "kegg")) {
+    # if (method %in% c("gsea", "kegg")) {
     #   df0 <- arrange(df0, Adjusted.P.value)
     #   y <- "Adjusted.P.value"
     # } else {
@@ -490,20 +435,20 @@ plot_enrich <- function(
         mutate(
             label = {
                 str_remove_all(Term, "\\(.*\\)") %>%
-                    str_remove_all("((ORPHA)|(WP)|(HSA)|(R-)).*") %>%
-                    str_trunc2(width) %>%
+                    str_remove_all("((ORPHA)|(WP)|(HSA)|(R-)|(CL:)).*") %>%
+                    str_pretty(width) %>%
                     str_trim() %>%
                     to_title()
             },
             rank = rev(row_number(!!sym(y)))
         )
-    # if (type %in% c("gsea", "kegg")) {
+    # if (method %in% c("gsea", "kegg")) {
     #   df <- mutate(df, rank = rev(row_number(!!sym(y))))
     # } else {
     df <- mutate(df, rank = row_number(!!sym(y)))
     # }
     # print(as_tibble(df) %>% select(1, 2, 4))
-    if (type == "gsea") {
+    if (method == "gsea") {
         colour_path <- "black"
     } else {
         colour_path <- ifelse(df$Adjusted.P.value <= 0.05, palette_discrete()[1], "gray50")
@@ -529,7 +474,40 @@ plot_enrich <- function(
     # expand_limits(y = max(df$generatio) + max(df$generatio) / ratio)
 }
 
-
+#' Pathway keyword dictionary for immune-related terms
+#' 
+#' Creates a categorized list of regular expression patterns for identifying
+#' immune-related pathways in enrichment analyses. The patterns are organized
+#' hierarchically from specific to broad immune categories.
+#'
+#' @return A nested list containing regular expression patterns for immune-related
+#' pathway identification. The list contains the following categories:
+#' \describe{
+#'   \item{cell}{Immune cell types (neutrophils, macrophages, T cells, B cells, etc.)}
+#'   \item{cytokine}{Cytokines and lipid mediators (interleukins, interferons, prostaglandins, etc.)}
+#'   \item{cytokine_full}{Extended cytokine patterns including TNF and NF-κB}
+#'   \item{immunity}{Core immune system terms (cells + cytokines + basic immune processes)}
+#'   \item{immunity_additional}{Extended immunity terms including complement system and TLRs}
+#'   \item{immunity_full}{Comprehensive immune system terms including inflammation and hematopoiesis}
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Get all immune-related keywords
+#' keywords <- pathway_keywords()
+#' 
+#' # Search for macrophage-related pathways
+#' macrophage_pathways <- str_detect(
+#'   pathway_descriptions,
+#'   keywords$cell[2]
+#' )
+#' 
+#' # Create a comprehensive immune filter
+#' immune_filter <- paste(unlist(keywords$immunity_full), collapse = "|")
+#' immune_pathways <- str_subset(pathway_descriptions, immune_filter)
+#' }
+#'
+#' @export
 pathway_keywords <- function() {
     l <- list()
     l[["cell"]] <- c("eutrophil", "(acrophage)|(onocyte)", "endritic cell", "((natural killer)|(NK)) cell", "(T [- ]? cell)|(T-helper)|(CD[48][- ])", "B[- ]?cell", "NETosis", "Th\\d{1,2} cell")
@@ -538,16 +516,42 @@ pathway_keywords <- function() {
     l[["immunity"]]  <- c(l[["cell"]], l[["cytokine"]], "STAT[ 35]", "AGE", "[Ll]upus", "(steo[cb]last)|([Bb]one)|(keletal)|(ossification)", "[Aa]rthrit", "[Gg]lucocorticoid")
     l[["immunity_additional"]] <- c(l[["immunity"]], l[["cytokine_full"]], "(omplement)|([^ ]C2 )", "(oll-like)|(TLR )", "mTORC1", "(Fc gamma)|(FCG)", "etalloproteinas", "[Aa]cute") %>% unique()
     l[["immunity_full"]] <- c(l[["immunity_additional"]],  "(PUMA)|(TP53)|( p53)", "([Ii]nflamm)|([Ii]mmun)", "hemokine", "mhc",  "phago((cytosis)|(some))", "leukocyte", "myeloid", "cytokine[^sis]", "granulocyte", "[Ll]ympho", "[Hh]emopo")
+    l[["cell_cycle"]] <- c(
+      "spindle",
+      "mitotic",
+      "G2",
+      "G1",
+      "chromati",
+      "meiosis",
+      "chromosom",
+      "DNA",
+      "[cC]ell cycle",
+      "organelle",
+      "cytokinesis",
+      "((nuclear)|(cell)) division",
+      "tubule",
+      "nucleosome",
+      "ATP",
+      "NAD",
+      "kinetochore",
+      "double-strand",
+      "recombin",
+      "CMG",
+      "naphase",
+      "hromocenter",
+      "ronucleus",
+      "idbody"
+    )
     return(l)
 }
 
 format_path <- function(x, width = 20) {
     str_remove_all(x, "\\(.*\\)") %>%
-        str_remove_all("((ORPHA)|(WP)|(HSA)|(R-)).*") %>%
+        str_remove_all("((ORPHA)|(WP)|(HSA)|(R-)|(CL:)).*") %>%
         # str_remove_all("(Signaling)|(By)") %>%
         # str_replace_all("Interleukin", "IL") %>%
         # str_replace(" [aA]nd ", "\\/")
-        str_trunc2(width) %>%
+        str_pretty(width) %>%
         str_trim() %>%
         # sort() %>%
         to_title()
