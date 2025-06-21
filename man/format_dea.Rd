@@ -4,7 +4,7 @@
 \alias{format_dea}
 \title{Format Differential Expression Analysis (DEA) Results}
 \usage{
-format_dea(x, metadata_genes, fc_threshold = 1, p_threshold = 0.05)
+format_dea(x, metadata_genes = NULL, fc_threshold = 1, p_threshold = 0.05)
 }
 \arguments{
 \item{x}{A \code{data.frame} or \code{tibble} containing DEA results. Expected columns include \code{log2FoldChange}, \code{padj}, and row names representing Ensembl gene identifiers.}
@@ -37,7 +37,8 @@ The function performs the following steps:
 }
 \examples{
 # Example DEA results
-ensembl_gene_id <- c("ENSG00000141510", "ENSG00000012048", "ENSG00000146648", "ENSG00000157764", "ENSG00000133703")
+ensembl_gene_id <- c("ENSG00000141510", "ENSG00000012048", "ENSG00000146648",
+ "ENSG00000157764", "ENSG00000133703")
 dea_results <- data.frame(
   log2FoldChange = c(2.0, -1.8, 0.5, -0.2, 3.0),
   padj = c(0.001, 0.01, 0.1, 0.06, 0.0001)

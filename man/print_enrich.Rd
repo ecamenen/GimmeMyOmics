@@ -4,26 +4,16 @@
 \alias{print_enrich}
 \title{Displays Enrichment}
 \usage{
-print_enrich(
-  x,
-  path2gene = NULL,
-  method = "enrichr",
-  regex = NULL,
-  pval = 0.05
-)
+print_enrich(x, method = "ora", regex = NULL, pval = 0.05)
 }
 \arguments{
 \item{x}{An enrichment results.}
-
-\item{path2gene}{A \strong{named list} mapping pathways to genes, \strong{required for \code{enrichr} method}.
-The list should have pathway names as \strong{keys} and \strong{character vectors of genes} as values.}
 
 \item{method}{A character string specifying the enrichment analysis method. Options are:
 \itemize{
 \item \code{"enrichr"}: Enrichr results (\strong{requires \code{path2gene}}, from \code{enrichR} package).
 \item \code{"gsea"}: Gene Set Enrichment Analysis (GSEA) results (from \code{clusterProfiler} package).
-\item \code{"limma"}: Limma-based enrichment results (from \code{limma} package).
-\item \code{"other"}: Other enrichment result formats.
+\item \code{"ora"}: Over-enrichment Analysis (GSEA) results (from \code{clusterProfiler} package).
 }}
 
 \item{regex}{A character vector of regular expressions to filter terms by their descriptions.}
@@ -43,12 +33,8 @@ with columns:
 }
 }
 \description{
-Formats and filters enrichment analysis results from various sources, including:
-\itemize{
-\item \strong{Enrichr} (\code{enrichR} package)
-\item \strong{GSEA} (\code{clusterProfiler} package)
-\item \strong{Limma} (\code{limma} package)
-}
+Formats and filters enrichment analysis results from enrichment analysis libraries:
+\code{enrichR} and \code{clusterProfiler}.
 }
 \details{
 This function standardizes different enrichment result formats, applying transformations such as:
@@ -59,26 +45,20 @@ This function standardizes different enrichment result formats, applying transfo
 }
 }
 \examples{
-# Required libraries
-library(stringr)
-
-# Example 1: Enrichr results (Requires a named list as path2gene)
+# Example 1: Enrichr results
 path_name <- c("Neutrophil degranulation", "Macrophage migration")
 pval <- c(2.7e-02, 2.89e-03)
 genes <- c("ITGB2/ANXA3/STXBP2/SPI1/ITGAM/CD177", "MAPK3/AKIRIN1/CX3CR1/CNN2/LGALS3/B4GALT1/C3AR1")
 ids <- c("GO:0043312", "GO:1905517")
 
-path2gene <- data.frame(
-  Pathway = rep(path_name, c(6, 7)),  # Repeat each pathway for each gene
-  Gene = unlist(strsplit(paste(genes, collapse = "/"), "/"))
-)
 enrichr_results <- data.frame(
-  Description = path_name,
-  p.adjust = pval,
-  geneID = genes,
-  ID = ids
+  Term = path_name,
+  Adjusted.P.value = pval,
+  Overlap = c("6/12", "7/17"),
+  ID = ids,
+  Genes = gsub("/", ";", genes)
 )
-print_enrich(enrichr_results, method = "enrichr", path2gene = path2gene)
+print_enrich(enrichr_results, method = "enrichr")
 
 # Example 2: GSEA results (from clusterProfiler)
 gsea_results <- data.frame(
@@ -91,16 +71,7 @@ gsea_results <- data.frame(
 )
 print_enrich(gsea_results, method = "gsea")
 
-# Example 3: Limma enrichment results (from limma)
-limma_results <- data.frame(
-  Description = path_name,
-  Adjusted.P.value = pval,
-  Overlap = c("6/12", "7/17"),
-  ID = ids
-)
-print_enrich(limma_results, method = "limma")
-
-# Example 4: Over-representation enrichment results (from clusterProfiler)
+# Example 3: Over-representation enrichment results (from clusterProfiler)
 ora_results <- data.frame(
   Description = path_name,
   p.adjust = pval,

@@ -42,10 +42,7 @@ The function performs the following steps:
 }
 }
 \examples{
-# Example usage
-library(SummarizedExperiment)
-library(S4Vectors)
-
+library(DESeq2)
 # Create example counts matrix
 nrows <- 5
 ncols <- 3
@@ -67,11 +64,13 @@ dea_results <- data.frame(
 
 # Metadata for samples
 metadata_samples <- data.frame(sample_id = paste0("Sample", 1:ncols))
+tops <- top_genes(dea_results)
+tops$ensembl_gene_id <- tops$gene_name
 
 # Select top genes and plot heatmap
-plot_heatmap(top_genes(dea_results), metadata_samples, count_normalized)
+plot_heatmap(tops, metadata_samples, count_normalized)
 
 # Transposed heatmap
-plot_heatmap(top_genes(dea_results), metadata_samples, count_normalized, transpose = TRUE)
+plot_heatmap(tops, metadata_samples, count_normalized, transpose = TRUE)
 
 }

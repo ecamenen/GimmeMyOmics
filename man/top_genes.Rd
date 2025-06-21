@@ -15,6 +15,8 @@ top_genes(
 )
 }
 \arguments{
+\item{x}{A \code{data.frame} or \code{tibble} containing DEA results. Must include \code{log2FoldChange} and \code{padj} columns.}
+
 \item{fc_threshold}{Numeric, minimum absolute log2 fold change required for inclusion.}
 
 \item{p_threshold}{Numeric, maximum adjusted p-value allowed.}
@@ -26,8 +28,6 @@ top_genes(
 \item{var}{Character, ranking variable.}
 
 \item{f}{Function, sorting function (e.g., \code{desc} for descending).}
-
-\item{res}{A \code{data.frame} or \code{tibble} containing DEA results. Must include \code{log2FoldChange} and \code{padj} columns.}
 }
 \value{
 A \code{tibble} containing selected genes with additional computed ranking columns if \code{rank = TRUE}.
@@ -57,6 +57,7 @@ dea_results <- data.frame(
 top_genes(dea_results)
 
 # Custom thresholds and return rankings
-top_genes(dea_results, fc_threshold = log2(1.5), p_threshold = 0.01, rank = TRUE, var = "log2FoldChange")
+top_genes(dea_results, fc_threshold = log2(1.5), p_threshold = 0.01, 
+rank = TRUE, var = "log2FoldChange")
 
 }

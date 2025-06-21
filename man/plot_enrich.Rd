@@ -8,34 +8,28 @@ plot_enrich(
   x,
   n = 20,
   title = NULL,
-  type = "go",
+  method = "ora",
   cex = 0.65,
   ratio = 5,
   width = 50,
   path2gene = NULL,
-  colour = c(GimmeMyPlot:::palette_discrete()[1], "grey80",
-    GimmeMyPlot:::palette_discrete()[2]),
+  colour = c(palette_discrete()[1], "grey80", palette_discrete()[2]),
   regex = NULL,
   label_x = "generatio"
 )
 }
 \arguments{
-\item{x}{A \code{data.frame} or \code{tibble} containing enrichment analysis results. Expected columns depend on the \code{type} parameter:
-\itemize{
-\item For \code{type = "go"}: \code{Description}, \code{p.adjust}, \code{GeneRatio}, \code{BgRatio}.
-\item For \code{type = "gsea"}: \code{Description}, \code{p.adjust}, \code{core_enrichment}, \code{setSize}.
-\item For \code{type = "ora"}: \code{Description}, \code{p.adjust}, \code{GeneRatio}, \code{BgRatio}.
-}}
+\item{x}{An enrichment results.}
 
 \item{n}{Integer, the number of top terms to display.}
 
-\item{title}{Character, the title of the plot.}
+\item{title}{Character for the plot title.}
 
-\item{type}{Character, the type of enrichment analysis. Supported values are:
+\item{method}{A character string specifying the enrichment analysis method. Options are:
 \itemize{
-\item \code{"go"}: Gene Ontology (GO) enrichment.
-\item \code{"gsea"}: Gene Set Enrichment Analysis (GSEA).
-\item \code{"kegg"}: KEGG pathway enrichment.
+\item \code{"enrichr"}: Enrichr results (\strong{requires \code{path2gene}}, from \code{enrichR} package).
+\item \code{"gsea"}: Gene Set Enrichment Analysis (GSEA) results (from \code{clusterProfiler} package).
+\item \code{"ora"}: Over-enrichment Analysis (GSEA) results (from \code{clusterProfiler} package).
 }}
 
 \item{cex}{Numeric, the scaling factor for text size.}
@@ -44,13 +38,13 @@ plot_enrich(
 
 \item{width}{Integer, the maximum width (in characters) for term labels.}
 
-\item{path2gene}{Optional, a \code{data.frame} or \code{tibble} mapping pathways to genes. Required for \code{type = "kegg"} if \code{GeneRatio} is not provided.}
+\item{path2gene}{Optional, a \code{data.frame} or \code{tibble} mapping pathways to genes. Required for \code{method = "kegg"} if \code{GeneRatio} is not provided.}
 
 \item{colour}{Character vector of length 3, specifying the colors for the gradient fill of the points.}
 
-\item{regex}{Character, a regular expression to filter terms by their description.}
+\item{regex}{A character vector of regular expressions to filter terms by their descriptions.}
 
-\item{label_x}{Character, the label for the x-axis. Default is \code{"generatio"} (gene ratio). For \code{type = "gsea"}, this can be changed to another column name.}
+\item{label_x}{Character, the label for the x-axis. Default is \code{"generatio"} (gene ratio). For \code{method = "gsea"}, this can be changed to another column name.}
 }
 \value{
 A \code{ggplot} object representing the enrichment plot.
@@ -61,16 +55,53 @@ Visualizes the results of enrichment analysis (e.g., GO, GSEA, KEGG, or limma) u
 \details{
 The function performs the following steps:
 \enumerate{
-\item Filters and processes the input data based on the \code{type} parameter.
+\item Filters and processes the input data based on the \code{method} parameter.
 \item Computes the gene ratio for each term.
 \item Truncates and formats term labels for readability.
 \item Ranks terms by significance and selects the top \code{n} terms.
 \item Generates a dot plot with term labels on the y-axis, gene ratio on the x-axis, and point size proportional to the number of genes.
 }
 
-For \code{type = "gsea"}, the function also extracts the number of leading genes from the \code{core_enrichment} column.
+For \code{method = "gsea"}, the function also extracts the number of leading genes from the \code{core_enrichment} column.
 }
 \examples{
+# Example 1: Enrichr results (Requires a named list as path2gene)
+path_name <- c("Neutrophil degranulation", "Macrophage migration")
+pval <- c(2.7e-02, 2.89e-03)
+genes <- c("ITGB2/ANXA3/STXBP2/SPI1/ITGAM/CD177", "MAPK3/AKIRIN1/CX3CR1/CNN2/LGALS3/B4GALT1/C3AR1")
+ids <- c("GO:0043312", "GO:1905517")
+
+enrichr_results <- data.frame(
+  Term = path_name,
+  Adjusted.P.value = pval,
+  Overlap = c("6/12", "7/17"),
+  ID = ids,
+  Genes = gsub("/", ";", genes)
+)
+plot_enrich(enrichr_results, method = "enrichr")
+
+# Example 2: GSEA results (from clusterProfiler)
+gsea_results <- data.frame(
+  Description = path_name,
+  p.adjust = pval,
+  core_enrichment = genes,
+  setSize = c(12, 17),
+  NES = c(1.75, 2.01),
+  ID = ids
+)
+plot_enrich(gsea_results, method = "gsea")
+
+# Example 3: Over-representation enrichment results (from clusterProfiler)
+ora_results <- data.frame(
+  Description = path_name,
+  p.adjust = pval,
+  GeneRatio = c("6/12", "7/17"),
+  BgRatio = c("60/120", "70/140"),
+  geneID = genes,
+  ID = ids
+)
+plot_enrich(ora_results)
+
 # Example GO enrichment results
 go_results <- data.frame(
   Description = c("immune response", "cell cycle", "DNA repair"),
@@ -78,19 +109,5 @@ go_results <- data.frame(
   GeneRatio = c("10/100", "15/150", "20/200"),
   BgRatio = c("100/1000", "150/1500", "200/2000")
 )
-
-# Plot GO enrichment results
-plot_enrich(go_results, type = "go", title = "GO Enrichment")
-
-# Example GSEA results
-gsea_results <- data.frame(
-  Description = c("inflammatory response", "apoptosis", "metabolism"),
-  p.adjust = c(0.001, 0.01, 0.05),
-  core_enrichment = c("Gene1/Gene2/Gene3", "Gene4/Gene5", "Gene6/Gene7/Gene8"),
-  setSize = c(100, 150, 200)
-)
-
-# Plot GSEA results
-plot_enrich(gsea_results, type = "gsea", title = "GSEA Enrichment")
 
 }

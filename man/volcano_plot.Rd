@@ -68,9 +68,6 @@ The volcano plot represents genes based on:
 If \code{top_genes} is provided, labels will be added for those genes.
 }
 \examples{
-library(ggplot2)
-library(ggrepel)
-
 # Example DEA results
 dea_results <- data.frame(
   gene_name = c("TP53", "BRCA1", "EGFR", "BRAF", "KRAS"),

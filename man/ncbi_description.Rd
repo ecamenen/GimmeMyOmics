@@ -28,7 +28,7 @@ The function performs the following steps:
 }
 }
 \examples{
-metadata_genes <- tibble::tibble(
+metadata_genes <- tibble(
   ensembl_gene_id = c("ENSG00000141510", "ENSG00000272398"),
   entrezgene_id = c(7157, NA),
   gene_name = c("TP53", "Unknown Gene")

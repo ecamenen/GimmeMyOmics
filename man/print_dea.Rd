@@ -18,10 +18,6 @@ print_dea(x, base = 2, ...)
 \item{base}{Numeric, the base for fold change calculation. Default is \code{2} (log2 fold change). Use \code{exp} for natural log fold change.}
 
 \item{...}{Additional arguments passed to \code{top_genes()} for filtering and ranking.}
-
-\item{name}{Logical, whether to include full gene names. Default is \code{FALSE}.}
-
-\item{metadata_genes}{Optional, a metadata table for retrieving full gene names.}
 }
 \value{
 A formatted \code{tibble} with the following columns:
@@ -40,7 +36,8 @@ This function extracts top genes, applies a fold change transformation, filters 
 }
 \examples{
 # Example DEA results
-ensembl_gene_id <- c("ENSG00000141510", "ENSG00000012048", "ENSG00000146648", "ENSG00000157764", "ENSG00000133703")
+ensembl_gene_id <- c("ENSG00000141510", "ENSG00000012048", "ENSG00000146648",
+ "ENSG00000157764", "ENSG00000133703")
 dea_results <- data.frame(
   log2FoldChange = c(2.0, -1.8, 0.5, -0.2, 3.0),
   padj = c(0.001, 0.01, 0.1, 0.06, 0.0001)
@@ -51,7 +48,9 @@ rownames(dea_results) <- ensembl_gene_id
 metadata_genes <- data.frame(
   ensembl_gene_id = ensembl_gene_id,
   gene_name = c("TP53", "BRCA1", "EGFR", "BRAF", "KRAS"),
-  description = c("tumor protein p53", "BRCA1 DNA repair associated", "KRAS proto-oncogene, GTPase", "epidermal growth factor receptor", "B-Raf proto-oncogene")
+  description = c("tumor protein p53", "BRCA1 DNA repair associated",
+  "KRAS proto-oncogene, GTPase", "epidermal growth factor receptor", 
+  "B-Raf proto-oncogene")
 )
 
 # Format DEA results
