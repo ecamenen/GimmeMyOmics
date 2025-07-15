@@ -6,6 +6,7 @@
 #' @param metadata_genes A `data.frame` containing gene metadata, including the columns `ensembl_gene_id` and `gene_name`.
 #' @param fc_threshold Numeric, the absolute log2 fold change threshold. Default is `log2(2)`.
 #' @param p_threshold Numeric, the adjusted p-value threshold. Default is `0.05`.
+#' @param name_id A character string specifying the name of the column containing gene IDs. If \code{metadata_genes} is not \code{NULL}, this column name must also exist in \code{metadata_genes}.
 #'
 #' @details
 #' The function performs the following steps:
@@ -48,7 +49,7 @@ format_dea <- function(
     metadata_genes = NULL,
     fc_threshold = 1,
     p_threshold = 0.05,
-    var = "ensembl_gene_id"
+    name_id = "ensembl_gene_id"
 ) {
     # required_cols <- c("ensembl_gene_id", "gene_name")
     # if (!all(required_cols %in% colnames(metadata_genes))) {
@@ -56,13 +57,13 @@ format_dea <- function(
     # }
     tmp <- x %>%
         as.data.frame() %>%
-        rownames_to_column(var)
+        rownames_to_column(name_id)
 
     if (!is.null(metadata_genes)) {
         tmp <- left_join(
             tmp,
             metadata_genes,
-            by = var
+            by = name_id
         )
     }
         mutate(
@@ -89,8 +90,8 @@ format_dea <- function(
 #' @param fc_threshold Numeric, minimum absolute log2 fold change required for inclusion.
 #' @param p_threshold Numeric, maximum adjusted p-value allowed.
 #' @param n Integer, number of top genes to return. Default is `1000`.
-#' @param rank Logical, whether to return ranking columns (`rank_p`, `rank_fc`, `rank_pfc`).
-#' @param var Character, ranking variable.
+#' @param return_rank Logical, whether to return ranking columns (`rank_p`, `rank_fc`, `rank_pfc`).
+#' @param rank_by Character, ranking variable.
 #' @param f Function, sorting function (e.g., `desc` for descending).
 #'
 #' @details
@@ -101,7 +102,7 @@ format_dea <- function(
 #' - Filters genes based on the given fold change and p-value thresholds.
 #' - Selects the top `n` genes sorted by the specified ranking variable.
 #'
-#' @return A `tibble` containing selected genes with additional computed ranking columns if `rank = TRUE`.
+#' @return A `tibble` containing selected genes with additional computed ranking columns if `return_rank = TRUE`.
 #'
 #' @examples
 #' # Example DEA results
@@ -116,7 +117,7 @@ format_dea <- function(
 #'
 #' # Custom thresholds and return rankings
 #' top_genes(dea_results, fc_threshold = log2(1.5), p_threshold = 0.01, 
-#' rank = TRUE, var = "log2FoldChange")
+#' return_rank = TRUE, rank_by = "log2FoldChange")
 #'
 #' @export
 top_genes <- function(
@@ -124,8 +125,8 @@ top_genes <- function(
     fc_threshold = 1,
     p_threshold = 0.05,
     n = Inf,
-    rank = FALSE,
-    var = "rank_pfc",
+    return_rank = FALSE,
+    rank_by = "rank_pfc",
     f = identity
 ) {
     res <- x %>%
@@ -135,11 +136,11 @@ top_genes <- function(
             rank_fc = dense_rank(desc(abs(log2FoldChange))),
             rank_pfc = dense_rank((rank_p + rank_fc) / 2)
         ) %>%
-        arrange(f(abs(.data[[var]]))) %>%
+        arrange(f(abs(.data[[rank_by]]))) %>%
         filter(abs(log2FoldChange) >= fc_threshold, padj <= p_threshold) %>%
         head(n = n)
 
-    if (!rank) {
+    if (!return_rank) {
         res <- select(res, -c(pfc, starts_with("rank")))
     }
 

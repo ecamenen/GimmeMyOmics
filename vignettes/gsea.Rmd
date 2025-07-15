@@ -38,7 +38,7 @@ select <- dplyr::select
 # metric <- "pfc"
 # metric <- "ranked_padj"
 metric <- "log2FoldChange"
-de_genes_ranked <- top_genes(dea_pretty, 0.01, 1, n = 50000, rank = TRUE) %>%
+de_genes_ranked <- top_genes(dea_pretty, 0.01, 1, n = 50000, return_rank = TRUE) %>%
     # mutate(ranked_padj = sign(log2FoldChange) * (log10(padj))) %>%
     pull(metric, name = ensembl_gene_id) %>%
         sort(decreasing = TRUE) %>%
@@ -283,7 +283,7 @@ gene_path <- list_table(l_path) %>% rownames()
 gene_path0 <- #l_de2[[1]] %>%
   dea_pretty %>%
   filter(str_detect(!!sym(gene_ont), paste0("^", gene_path, "$", collapse = "|"))) %>% 
-  top_genes(1e-9, 1, rank = TRUE) %>%
+  top_genes(1e-9, 1, return_rank = TRUE) %>%
   mutate(pfc = -pfc)
 gene_path1 <- gene_path0 %>% 
   filter(!duplicated(!!sym(gene_ont))) %>% 

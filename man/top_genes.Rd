@@ -9,8 +9,8 @@ top_genes(
   fc_threshold = 1,
   p_threshold = 0.05,
   n = Inf,
-  rank = FALSE,
-  var = "rank_pfc",
+  return_rank = FALSE,
+  rank_by = "rank_pfc",
   f = identity
 )
 }
@@ -23,14 +23,14 @@ top_genes(
 
 \item{n}{Integer, number of top genes to return. Default is \code{1000}.}
 
-\item{rank}{Logical, whether to return ranking columns (\code{rank_p}, \code{rank_fc}, \code{rank_pfc}).}
+\item{return_rank}{Logical, whether to return ranking columns (\code{rank_p}, \code{rank_fc}, \code{rank_pfc}).}
 
-\item{var}{Character, ranking variable.}
+\item{rank_by}{Character, ranking variable.}
 
 \item{f}{Function, sorting function (e.g., \code{desc} for descending).}
 }
 \value{
-A \code{tibble} containing selected genes with additional computed ranking columns if \code{rank = TRUE}.
+A \code{tibble} containing selected genes with additional computed ranking columns if \code{return_rank = TRUE}.
 }
 \description{
 Filters the top differentially expressed genes from a DEA result set based on fold change, adjusted p-value, and a combined ranking metric.
@@ -58,6 +58,6 @@ top_genes(dea_results)
 
 # Custom thresholds and return rankings
 top_genes(dea_results, fc_threshold = log2(1.5), p_threshold = 0.01, 
-rank = TRUE, var = "log2FoldChange")
+return_rank = TRUE, rank_by = "log2FoldChange")
 
 }

@@ -9,7 +9,7 @@ format_dea(
   metadata_genes = NULL,
   fc_threshold = 1,
   p_threshold = 0.05,
-  var = "ensembl_gene_id"
+  name_id = "ensembl_gene_id"
 )
 }
 \arguments{
@@ -20,6 +20,8 @@ format_dea(
 \item{fc_threshold}{Numeric, the absolute log2 fold change threshold. Default is \code{log2(2)}.}
 
 \item{p_threshold}{Numeric, the adjusted p-value threshold. Default is \code{0.05}.}
+
+\item{name_id}{A character string specifying the name of the column containing gene IDs. If \code{metadata_genes} is not \code{NULL}, this column name must also exist in \code{metadata_genes}.}
 }
 \value{
 A \code{tibble} with the following additional columns:

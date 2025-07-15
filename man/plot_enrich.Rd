@@ -16,7 +16,7 @@ plot_enrich(
   colour = c(palette_discrete()[1], "grey80", palette_discrete()[2]),
   regex = NULL,
   label_x = "generatio",
-  var = "genes"
+  name_id = "genes"
 )
 }
 \arguments{
@@ -46,6 +46,8 @@ plot_enrich(
 \item{regex}{A character vector of regular expressions to filter terms by their descriptions.}
 
 \item{label_x}{Character, the label for the x-axis. Default is \code{"generatio"} (gene ratio). For \code{method = "gsea"}, this can be changed to another column name.}
+
+\item{name_id}{A character, the name of the column containing gene IDs. This parameter is required only when using the "ora" method.}
 }
 \value{
 A \code{ggplot} object representing the enrichment plot.
@@ -102,13 +104,5 @@ ora_results <- data.frame(
   ID = ids
 )
 plot_enrich(ora_results)
-
-# Example GO enrichment results
-go_results <- data.frame(
-  Description = c("immune response", "cell cycle", "DNA repair"),
-  p.adjust = c(0.001, 0.01, 0.05),
-  GeneRatio = c("10/100", "15/150", "20/200"),
-  BgRatio = c("100/1000", "150/1500", "200/2000")
-)
 
 }

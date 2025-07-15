@@ -44,10 +44,10 @@ metadata_samples$condition <- relevel(metadata_samples$condition, ref = "HD")
 data("biomart_annotation")
 (annotation <- biomart_annotation[[paste(genome_species, genome_version, sep = "_")]])
 
-var <- "ensembl_gene_id"
-# var <- "gene_name"
+name_id <- "ensembl_gene_id"
+# name_id <- "gene_name"
 metadata_genes <- filter(annotation, !duplicated(ensembl_gene_id)) %>% 
-    left_join(gene_count_raw, ., by = var) %>%
+    left_join(gene_count_raw, ., by = name_id) %>%
     select(colnames(annotation))
 ```
 
@@ -63,7 +63,7 @@ pull(metadata_genes, "gene_biotype") %>%
 ```{r}
 gene_count <- gene_count_raw %>%
   as.data.frame() %>%
-  column_to_rownames(var) %>%
+  column_to_rownames(name_id) %>%
   round()
 
 all(rownames(metadata_samples) == colnames(gene_count))
@@ -157,7 +157,7 @@ dea_pretty <- format_dea(
     metadata_genes, 
     fc_threshold = fc_threshold, 
     p_threshold = p_threshold,
-    var = var
+    name_id = name_id
 )
 
 table(pull(dea_pretty, "Expression")) %>% 
@@ -192,7 +192,7 @@ library("rvest")
 
 
 ```{r, message=FALSE, warning=FALSE, eval = FALSE}
-plot_counts <- function(x, var = "ensembl_gene_id") {
+plot_counts <- function(x, name_id = "ensembl_gene_id") {
   list_cbind0 <- function(x) {
   row_names <- lapply(x, rownames)
   x <- map(x, ~ as.data.frame(.))
@@ -223,7 +223,7 @@ plot_counts <- function(x, var = "ensembl_gene_id") {
   
 df <- plotCounts(
     dea,
-    pull(x, var),
+    pull(x, name_id),
     intgroup = conditions[-3],
     returnData = TRUE
 )
@@ -239,7 +239,7 @@ df <- plotCounts(
 
 top_genes[seq(3), "description"]
 
-map(seq(3), ~plot_counts(top_genes[.,], var = var)) -> pp
+map(seq(3), ~plot_counts(top_genes[.,], name_id = name_id)) -> pp
 pp[[1]] + pp[[2]] + pp[[3]]
 ```
 

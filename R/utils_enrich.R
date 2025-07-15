@@ -265,6 +265,8 @@ theme_enrich0 <- function(
 #' @param path2gene Optional, a `data.frame` or `tibble` mapping pathways to genes. Required for `method = "kegg"` if `GeneRatio` is not provided.
 #' @param colour Character vector of length 3, specifying the colors for the gradient fill of the points.
 #' @param label_x Character, the label for the x-axis. Default is `"generatio"` (gene ratio). For `method = "gsea"`, this can be changed to another column name.
+#' @param name_id A character, the name of the column containing gene IDs. This parameter is required only when using the "ora" method.
+
 #'
 #' @details
 #' The function performs the following steps:
@@ -315,14 +317,6 @@ theme_enrich0 <- function(
 #'   ID = ids
 #' )
 #' plot_enrich(ora_results)
-#' 
-#' # Example GO enrichment results
-#' go_results <- data.frame(
-#'   Description = c("immune response", "cell cycle", "DNA repair"),
-#'   p.adjust = c(0.001, 0.01, 0.05),
-#'   GeneRatio = c("10/100", "15/150", "20/200"),
-#'   BgRatio = c("100/1000", "150/1500", "200/2000")
-#' )
 #'
 #' @export
 plot_enrich <- function(
@@ -337,7 +331,7 @@ plot_enrich <- function(
         colour = c(palette_discrete()[1], "grey80", palette_discrete()[2]),
         regex = NULL,
         label_x = "generatio",
-        var = "genes") {
+        name_id = "genes") {
     func <- function(x) {
         str_remove_all(x, "Genes ((down)|(up))-regulated ((in ?)|(with))") %>%
             str_remove_all("comparison of ") %>%
@@ -350,7 +344,8 @@ plot_enrich <- function(
     if (!is.null(regex)) {
       x <- filter_gsea(x, regex)
     }
-    if(nrow(x@result) == 0) {
+    x <- as.data.frame(x)
+    if(nrow(x) == 0) {
       return(NULL)
     }
     if (method == "gsea") {
@@ -381,7 +376,7 @@ plot_enrich <- function(
             Term = Description %>%
                 func() %>%
                 to_title(),
-            Count = str_split(!!sym(var), "/") %>% sapply(length)
+            Count = str_split(!!sym(name_id), "/") %>% sapply(length)
         )
         if (!is.null(path2gene)) {
             n_paths <- list.mapv(
