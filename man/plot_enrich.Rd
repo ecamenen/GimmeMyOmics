@@ -15,7 +15,8 @@ plot_enrich(
   path2gene = NULL,
   colour = c(palette_discrete()[1], "grey80", palette_discrete()[2]),
   regex = NULL,
-  label_x = "generatio"
+  label_x = "generatio",
+  var = "genes"
 )
 }
 \arguments{

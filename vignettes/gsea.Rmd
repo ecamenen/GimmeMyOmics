@@ -21,14 +21,14 @@ library("clusterProfiler")
 library("enrichplot")
 # source("R/utils_enrich.R")
 # source("R/utils_network.R")
-org <- "hsa"
 method <- "gsea"
 label_x <- "NES"
 org_lib <- "org.Hs.eg.db"
+org <- "hsa"
+# org_lib <- "org.Mm.eg.db"
 # org <- "mmu"
 # method <- "kegg"
 # label_x <- "generatio"
-# org_lib <- "org.Mm.eg.db"
 library(org_lib, character.only = TRUE)
 select <- dplyr::select
 ```

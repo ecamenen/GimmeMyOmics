@@ -25,7 +25,11 @@ library("RColorBrewer")
 # source("R/utils_theme.R")
 # source("R/utils_bulk.R")
 genome_species <- "hsapiens"
+# genome_species <- "mmusculus"
 genome_version <- 113
+fc_threshold <- 2
+fc_threshold <- log2(fc_threshold)
+p_threshold <- 0.05
 ```
 
 ```{r}
@@ -40,8 +44,10 @@ metadata_samples$condition <- relevel(metadata_samples$condition, ref = "HD")
 data("biomart_annotation")
 (annotation <- biomart_annotation[[paste(genome_species, genome_version, sep = "_")]])
 
+var <- "ensembl_gene_id"
+# var <- "gene_name"
 metadata_genes <- filter(annotation, !duplicated(ensembl_gene_id)) %>% 
-    left_join(gene_count_raw, ., by = "ensembl_gene_id") %>%
+    left_join(gene_count_raw, ., by = var) %>%
     select(colnames(annotation))
 ```
 
@@ -57,7 +63,7 @@ pull(metadata_genes, "gene_biotype") %>%
 ```{r}
 gene_count <- gene_count_raw %>%
   as.data.frame() %>%
-  column_to_rownames("ensembl_gene_id") %>%
+  column_to_rownames(var) %>%
   round()
 
 all(rownames(metadata_samples) == colnames(gene_count))
@@ -146,13 +152,12 @@ summary(dea_raw)
 ```
 
 ```{r}
-fc_threshold <- 1
-p_threshold <- 0.05
 dea_pretty <- format_dea(
     dea_raw,
     metadata_genes, 
     fc_threshold = fc_threshold, 
-    p_threshold = p_threshold
+    p_threshold = p_threshold,
+    var = var
 )
 
 table(pull(dea_pretty, "Expression")) %>% 
@@ -177,6 +182,7 @@ volcano_plot(
 ```
 
 ```{r, eval = FALSE}
+library("rvest")
 (top_description <- top_genes %>% 
      pull(1) %>% 
      map(~ncbi_description(., annotation)) %>%
@@ -186,7 +192,7 @@ volcano_plot(
 
 
 ```{r, message=FALSE, warning=FALSE, eval = FALSE}
-plot_counts <- function(x) {
+plot_counts <- function(x, var = "ensembl_gene_id") {
   list_cbind0 <- function(x) {
   row_names <- lapply(x, rownames)
   x <- map(x, ~ as.data.frame(.))
@@ -217,7 +223,7 @@ plot_counts <- function(x) {
   
 df <- plotCounts(
     dea,
-    pull(x, "ensembl_gene_id"),
+    pull(x, var),
     intgroup = conditions[-3],
     returnData = TRUE
 )
@@ -233,7 +239,7 @@ df <- plotCounts(
 
 top_genes[seq(3), "description"]
 
-map(seq(3), ~plot_counts(top_genes[.,])) -> pp
+map(seq(3), ~plot_counts(top_genes[.,], var = var)) -> pp
 pp[[1]] + pp[[2]] + pp[[3]]
 ```
 

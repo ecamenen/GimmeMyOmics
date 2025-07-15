@@ -4,7 +4,13 @@
 \alias{format_dea}
 \title{Format Differential Expression Analysis (DEA) Results}
 \usage{
-format_dea(x, metadata_genes = NULL, fc_threshold = 1, p_threshold = 0.05)
+format_dea(
+  x,
+  metadata_genes = NULL,
+  fc_threshold = 1,
+  p_threshold = 0.05,
+  var = "ensembl_gene_id"
+)
 }
 \arguments{
 \item{x}{A \code{data.frame} or \code{tibble} containing DEA results. Expected columns include \code{log2FoldChange}, \code{padj}, and row names representing Ensembl gene identifiers.}

@@ -10,8 +10,8 @@ top_genes(
   p_threshold = 0.05,
   n = Inf,
   rank = FALSE,
-  var = "pfc",
-  f = desc
+  var = "rank_pfc",
+  f = identity
 )
 }
 \arguments{
