@@ -265,7 +265,7 @@ heatmap_enrich2 <- function(
     x,
     foldChange,
     wrap = 50,
-    regex = NUL,
+    regex = NULL,
     width = 20,
     power = 2,
     FDR = 0.05,
@@ -408,10 +408,10 @@ filter_gsea <- function(x, regex = NULL, FDR = 0.05, width = 500, negate = FALSE
       rownames(x@termsim) <- x@result[, "Description"] -> colnames(x@termsim)
     
     if ("NES" %in% colnames(x@result))
-      x <- x %>%
+      x@result <- x@result %>%
         arrange(NES)
     else 
-      x <- x %>%
+      x@result <- x@result %>%
         arrange(p.adjust)
     return(x)
 }

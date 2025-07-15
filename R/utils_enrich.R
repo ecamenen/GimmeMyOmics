@@ -336,7 +336,8 @@ plot_enrich <- function(
         path2gene = NULL,
         colour = c(palette_discrete()[1], "grey80", palette_discrete()[2]),
         regex = NULL,
-        label_x = "generatio") {
+        label_x = "generatio",
+        var = "genes") {
     func <- function(x) {
         str_remove_all(x, "Genes ((down)|(up))-regulated ((in ?)|(with))") %>%
             str_remove_all("comparison of ") %>%
@@ -346,10 +347,13 @@ plot_enrich <- function(
             str_remove_all("the ") %>%
             str_remove(" - .*")
     }
+    if (!is.null(regex)) {
+      x <- filter_gsea(x, regex)
+    }
+    if(nrow(x@result) == 0) {
+      return(NULL)
+    }
     if (method == "gsea") {
-        if (!is.null(regex)) {
-            x <- filter_gsea(x, regex)
-        }
         df <- mutate(
             x,
             Adjusted.P.value = p.adjust,
@@ -371,16 +375,13 @@ plot_enrich <- function(
     } else if (method == "ora") {
         title_size <- "# DEG"
         label_x <- "Gene ratio"
-        if (!is.null(regex)) {
-          x <- filter_gsea(x, regex)
-        }
         df <- mutate(
             x,
             Adjusted.P.value = p.adjust,
             Term = Description %>%
                 func() %>%
                 to_title(),
-            Count = str_split(genes, "/") %>% sapply(length)
+            Count = str_split(!!sym(var), "/") %>% sapply(length)
         )
         if (!is.null(path2gene)) {
             n_paths <- list.mapv(
@@ -400,9 +401,6 @@ plot_enrich <- function(
     } else {
         title_size <- "# DEG"
         label_x <- "Gene ratio"
-        if (!is.null(regex)) {
-            x <- filter(x, str_detect(Term, paste(regex, collapse = "|")))
-        }
         df <- mutate(
             x,
             Count = str_remove_all(Overlap, "\\/.*") %>% as.numeric(),
@@ -435,7 +433,7 @@ plot_enrich <- function(
         mutate(
             label = {
                 str_remove_all(Term, "\\(.*\\)") %>%
-                    str_remove_all("((ORPHA)|(WP)|(HSA)|(R-)|(CL:)).*") %>%
+                    str_remove_all("((ORPHA)|(WP)|(HSA)|(R-)|(CL:)|(BTO:)|(PDB:)).*") %>%
                     str_pretty(width) %>%
                     str_trim() %>%
                     to_title()
@@ -513,9 +511,9 @@ pathway_keywords <- function() {
     l[["cell"]] <- c("eutrophil", "(acrophage)|(onocyte)", "endritic cell", "((natural killer)|(NK)) cell", "(T [- ]? cell)|(T-helper)|(CD[48][- ])", "B[- ]?cell", "NETosis", "Th\\d{1,2} cell")
     l[["cytokine"]] <- c("(nterleukins?)|(IL-?\\d{1,2})", "(nterferon)|(IFN[ABG])", "(rostaglandin)|([Aa]rachidonic)|(icosa)|([Ll]eukotriene)|([Dd]ocosahexaenoic)|([Ii]cosapentaenoic)|([Ll]ipoxin)|(esolvin)")
     l[["cytokine_full"]] <- c(l[["cytokine"]], "(tumor necrosis factor)|(TNF)|(NF-k)")
-    l[["immunity"]]  <- c(l[["cell"]], l[["cytokine"]], "STAT[ 35]", "AGE", "[Ll]upus", "(steo[cb]last)|([Bb]one)|(keletal)|(ossification)", "[Aa]rthrit", "[Gg]lucocorticoid")
-    l[["immunity_additional"]] <- c(l[["immunity"]], l[["cytokine_full"]], "(omplement)|([^ ]C2 )", "(oll-like)|(TLR )", "mTORC1", "(Fc gamma)|(FCG)", "etalloproteinas", "[Aa]cute") %>% unique()
-    l[["immunity_full"]] <- c(l[["immunity_additional"]],  "(PUMA)|(TP53)|( p53)", "([Ii]nflamm)|([Ii]mmun)", "hemokine", "mhc",  "phago((cytosis)|(some))", "leukocyte", "myeloid", "cytokine[^sis]", "granulocyte", "[Ll]ympho", "[Hh]emopo")
+    l[["immunity_full"]]  <- c(l[["immunity_additional"]], "[Ll]upus", "(steo[cb]last)|([Bb]one)|(keletal)|(ossification)", "[Aa]rthrit", "[Gg]lucocorticoid", "[Aa]cute")
+    l[["immunity"]] <- c(l[["cell"]], l[["cytokine"]], l[["cytokine_full"]], "(omplement)|([^ ]C2 )", "(oll-like)|(TLR )", "mTORC1", "(Fc gamma)|(FCG)", "etalloproteinas") %>% unique()
+    l[["immunity_additional"]] <- c(l[["immunity"]],  "STAT[ 35]", "AGE", "(PUMA)|(TP53)|( p53)", "([Ii]nflamm)|([Ii]mmun)", "hemokine", "mhc",  "phago((cytosis)|(some))", "leukocyte", "myeloid", "cytokine[^sis]", "granulocyte", "[Ll]ympho", "[Hh]emopo")
     l[["cell_cycle"]] <- c(
       "spindle",
       "mitotic",
