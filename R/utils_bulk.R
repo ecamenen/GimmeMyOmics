@@ -47,7 +47,8 @@ format_dea <- function(
     x,
     metadata_genes = NULL,
     fc_threshold = 1,
-    p_threshold = 0.05
+    p_threshold = 0.05,
+    var = "ensembl_gene_id"
 ) {
     # required_cols <- c("ensembl_gene_id", "gene_name")
     # if (!all(required_cols %in% colnames(metadata_genes))) {
@@ -55,13 +56,13 @@ format_dea <- function(
     # }
     tmp <- x %>%
         as.data.frame() %>%
-        rownames_to_column("ensembl_gene_id")
+        rownames_to_column(var)
 
     if (!is.null(metadata_genes)) {
         tmp <- left_join(
             tmp,
             metadata_genes,
-            by = "ensembl_gene_id"
+            by = var
         )
     }
         mutate(
@@ -124,8 +125,8 @@ top_genes <- function(
     p_threshold = 0.05,
     n = Inf,
     rank = FALSE,
-    var = "pfc",
-    f = desc
+    var = "rank_pfc",
+    f = identity
 ) {
     res <- x %>%
         mutate(
@@ -136,7 +137,7 @@ top_genes <- function(
         ) %>%
         arrange(f(abs(.data[[var]]))) %>%
         filter(abs(log2FoldChange) >= fc_threshold, padj <= p_threshold) %>%
-        slice_head(n = n)
+        head(n = n)
 
     if (!rank) {
         res <- select(res, -c(pfc, starts_with("rank")))
@@ -372,18 +373,18 @@ print_dea <- function(x, base = 2, ...) {
     top_genes(x, n = 10000, fc_threshold = 0, p_threshold = 1, ...) %>%
     filter(Expression != "ns") %>%
     mutate(
-        FC = ifelse(
+        `Fold-change` = ifelse(
             log2FoldChange > 0,
             round(func(log2FoldChange), 2),
             -round(func(abs(log2FoldChange)), 2)
         ),
-        FDR = format(padj, digits = 2, scientific = TRUE)
+        `P-adjusted` = format(padj, digits = 2, scientific = TRUE),
+        `Full name` = to_title(description) %>% 
+          str_remove_all("\\[.*") %>% 
+          str_squish()
     ) %>%
-    rename(
-        alias = "gene_name",
-        full_name = "description"
-    ) %>%
-    select(alias, full_name, FC, FDR)
+    rename(Gene = "gene_name") %>%
+    select(Gene, `Full name`, `Fold-change`, `P-adjusted`)
 }
 
 #' Fetches Gene Description from NCBI
@@ -414,13 +415,13 @@ print_dea <- function(x, base = 2, ...) {
 #'
 #' @export
 ncbi_description <- function(x, metadata_genes, database = "ensembl_gene_id") {
-    if (!database %in% c("ensembl_gene_id", "entrezgene_id")) {
+    if (!database %in% c("ensembl_gene_id", "entrezgene_id", "gene_name")) {
         stop('Invalid value for `database`. It must match `metadata_genes` column names. Choose either "ensembl_gene_id" or "entrezgene_id".')
     }
 
     gene_subset <- filter(metadata_genes, .data[[database]] == x) %>%
         slice(1)
-    gene_query <- pull(gene_subset, database)
+    gene_query <- pull(gene_subset, "ensembl_gene_id")
 
     if (!is.na(gene_query)) {
         url <- paste0("https://www.ncbi.nlm.nih.gov/gene/?term=", gene_query)
