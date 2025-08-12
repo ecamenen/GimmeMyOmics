@@ -78,6 +78,7 @@ format_dea <- function(
             padj = ifelse(padj == 0, min(padj[padj > 0], na.rm = TRUE), padj)
         ) %>%
         filter(abs(log2FoldChange) >= 0.01) %>%
+        filter(!is.na(padj)) %>%
         relocate("gene_name") %>%
         as_tibble()
 }
@@ -137,7 +138,7 @@ top_genes <- function(
             rank_pfc = dense_rank((rank_p + rank_fc) / 2)
         ) %>%
         arrange(f(abs(.data[[rank_by]]))) %>%
-        filter(abs(log2FoldChange) >= fc_threshold, padj <= p_threshold) %>%
+        filter(Expression != "ns", abs(log2FoldChange) >= fc_threshold, padj <= p_threshold) %>%
         head(n = n)
 
     if (!return_rank) {

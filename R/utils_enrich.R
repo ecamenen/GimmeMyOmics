@@ -129,13 +129,29 @@ print_enrich <- function(x, method = "ora", regex = NULL, pval = 0.05) {
         select(Description, FDR, `Nb DEG`, `Nb genes`, `DEG/Genes`, Genes, contains(c("NES", "ID")))
 
     if (method == "gsea") {
-        res %>%
+      res <- res %>%
             rename_with(~ str_replace_all(., "DEG", "Enriched"), contains("DEG")) %>%
             relocate("NES", .after = "FDR") %>%
-            relocate("ID", .after = "Description")
+            relocate("ID", .after = "Description") %>%
+            rename(
+              `Normalized enrichment score` = "NES",
+              `Nb enriched genes` = "Nb Enriched",
+              `% enriched/total genes` = "Enriched/Genes",
+              `Enriched gene name` = "Genes"
+              )
     } else {
-      res
+      res <- rename(
+        res,
+        `Nb total genes` = "Nb genes",
+        `% DEG/total genes` = "DEG/Genes",
+        `DEG name` = "Genes"
+      )
     }
+    rename(
+      res,
+      `P-adjusted` = "FDR",
+      Pathway = "Description",
+    )
 }
 
 theme_enrich <- function(
