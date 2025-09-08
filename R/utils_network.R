@@ -88,12 +88,12 @@ gsea_enrich <- function(
 
 #' Network visualization of enrichment results
 #'
-#' Wrapper around \code{enrichplot::cnetplot} for enhanced visualization of 
+#' Wrapper around \code{ggtangle::cnetplot} for enhanced visualization of 
 #' gene-concept networks from enrichment analysis results. Provides customization
 #' options for node appearance, highlighting specific genes, and improved 
 #' aesthetics.
 #'
-#' @inheritParams enrichplot::cnetplot
+#' @inheritParams ggtangle::cnetplot
 #' @param x Either \code{enrichResult} or  \code{compareClusterResult} object from clusterProfiler.
 #' @param highlighted Character vector of gene names to highlight in the network.
 #' @param col_highlight Color for highlighted nodes.
@@ -105,10 +105,10 @@ gsea_enrich <- function(
 #' @param colour Color palette for gradient coloring.
 #' @param title Character for the plot title.
 #' @param power Integer for exponent for color gradient transformation.
-#' @param ... Additional arguments passed to \code{enrichplot::cnetplot}.
+#' @param ... Additional arguments passed to \code{ggtangle::cnetplot}.
 #'
 #' @details
-#' This function extends \code{enrichplot::cnetplot} with:
+#' This function extends \code{ggtangle::cnetplot} with:
 #' \itemize{
 #'   \item Automatic filtering by FDR and term description patterns
 #'   \item Enhanced label formatting (wrapping, truncation)
@@ -138,7 +138,7 @@ gsea_enrich <- function(
 #' }
 #'
 #' @return A ggplot object showing the gene-concept network.
-#' @seealso \code{\link[enrichplot]{cnetplot}}
+#' @seealso \code{\link[ggtangle]{cnetplot}}
 #' @export
 network_enrich <- function(
         x,
@@ -147,7 +147,6 @@ network_enrich <- function(
         foldChange  = NULL,
         cex = 0.7,
         cex_node = 5.5 * cex,
-        node_label = "all",
         regex = NULL,
         width = 20,
         FDR = 0.05,
@@ -418,16 +417,16 @@ filter_gsea <- function(x, regex = NULL, FDR = 0.05, width = 500, negate = FALSE
 
 #' Enrichment map visualization
 #' 
-#' Wrapper around `enrichplot::emapplot` for creating enrichment maps from 
+#' Wrapper around `emapplot` for creating enrichment maps from 
 #' enrichment analysis results. Provides customization options for clustering, 
 #' node appearance, and improved aesthetics.
 #'
 #' @inheritParams enrichplot::emapplot
 #' @inheritParams network_enrich
-#' @param alpha Double for transparency of edges.
-#' @param method A character string specifying the enrichment analysis method. Options are:
-#'   - `enrichR` package;
-#'   - `clusterProfiler` package.
+#' @param method A character string specifying the package of the enrichment analysis method.
+#'  Options are:
+#'   - `enrichR`;
+#'   - `clusterProfiler`.
 #' @param ... Additional arguments passed to `enrichplot::emapplot`.
 #'
 #' @details
@@ -468,9 +467,9 @@ map_enrich <- function(
         width = 20,
         FDR = 0.05,
         cex = 1,
-        cluster.params = list(cluster = TRUE, legend = TRUE, label_words_n = 2),
-        cex.params = list(category_label =  0.7 * cex, line = 0.5),
-        alpha = 0.1,
+        group = TRUE, 
+        nWords = 2,
+        size_edge  = 0.5,
         showCategory = 15,
         colour = c(palette_discrete()[1], "gray50", palette_discrete()[2]),
         method = "clusterProfiler",
@@ -488,11 +487,11 @@ map_enrich <- function(
     
       p <- emapplot(
           p,
-            cluster.params = cluster.params,
-            cex.params = cex.params,
-            alpha = alpha,
-            showCategory = showCategory,
-            ...
+          group = group,
+          nWords = nWords,
+          size_edge = size_edge,
+          showCategory = showCategory,
+          ...
         ) +
         theme_void() +
         theme(legend.title = element_text(face = "italic", size = 12 * cex))
