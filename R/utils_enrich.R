@@ -133,6 +133,7 @@ print_enrich <- function(x, method = "ora", regex = NULL, pval = 0.05) {
             rename_with(~ str_replace_all(., "DEG", "Enriched"), contains("DEG")) %>%
             relocate("NES", .after = "FDR") %>%
             relocate("ID", .after = "Description") %>%
+        arrange(desc(abs(NES))) %>%
             rename(
               `Normalized enrichment score` = "NES",
               `Nb enriched genes` = "Nb Enriched",
@@ -200,13 +201,13 @@ theme_enrich0 <- function(
         power = 2,
         title_size = "# Leading genes",
         num = TRUE) {
-    if (label_colour == "P-adjusted") {
-        label_func <- label_pvalue()
-    } else {
+    # if (label_colour == "P-adjusted") {
+    #     label_func <- label_pvalue()
+    # } else {
         label_func <- label_number_auto()
         if (!isFALSE(trans))
             label_func <- function(x) expx_trans(x, base = power) %>% round(1)
-    }
+    # }
     p <- p +
         scale_fill_gradientn(
             labels = function(x) label_func(x),
@@ -381,7 +382,7 @@ plot_enrich <- function(
             df <- mutate(df, generatio = !!sym(label_x))
         }
         df <- arrange(df, desc(generatio))
-        x_var <- "Adjusted.P.value"
+        x_var <- "NES"
     } else if (method == "ora") {
         title_size <- "# DEG"
         label_x <- "Gene ratio"
@@ -391,7 +392,8 @@ plot_enrich <- function(
             Term = Description %>%
                 func() %>%
                 to_title(),
-            Count = str_split(!!sym(name_id), "/") %>% sapply(length)
+            Count = str_remove_all(GeneRatio, "\\/.*") %>% as.numeric(),
+            generatio = Count %>% divide_by(str_remove_all(BgRatio, "\\/.*") %>% as.numeric())
         )
         if (!is.null(path2gene)) {
             n_paths <- list.mapv(
@@ -401,11 +403,9 @@ plot_enrich <- function(
                     pull(2) %>%
                     length()
             )
-            df <- mutate(df, bg = n_paths, generatio = Count / n_paths)
+            df <- mutate(df, bg = n_paths)
         } else {
-            df <- mutate(df, bg = n, generatio = str_split(GeneRatio, "/") %>%
-                             sapply(function(i) as.numeric(i[1]) / as.numeric(i[2]))
-            )
+            df <- mutate(df, bg = n)
         }
         x_var <- "p.adjust"
     } else {
@@ -418,7 +418,6 @@ plot_enrich <- function(
                 str_split(Overlap, "/") %>%
                     sapply(function(i) as.numeric(i[1]) / as.numeric(i[2]))
             },
-            bg = str_remove_all(Overlap, ".*\\/") %>% as.numeric(),
             Term = Term %>%
               func() %>%
               to_title()
@@ -429,7 +428,11 @@ plot_enrich <- function(
         filter(!is.na(Term))
     if (nrow(df0) < n)
         df0 <- df
-    df0 <- arrange(df0, abs(!!sym(x_var)))
+    if (x_var == "NES") {
+      df0 <- arrange(df0, desc(abs(NES)))
+    } else {
+      df0 <- arrange(df0, abs(!!sym(x_var)))
+    }
     y <- "generatio"
     # if (method %in% c("gsea", "kegg")) {
     #   df0 <- arrange(df0, Adjusted.P.value)
@@ -439,7 +442,6 @@ plot_enrich <- function(
     #   y <- "Combined.Score"
     # }
     df <- head(df0, n) %>%
-        arrange(!!sym(x_var)) %>%
         mutate(
             label = {
                 str_remove_all(Term, "\\(.*\\)") %>%
@@ -448,14 +450,13 @@ plot_enrich <- function(
                     str_trim() %>%
                     to_title()
             },
-            rank = rev(row_number(!!sym(y)))
+            rank = row_number(!!sym(y))
         )
     # if (method %in% c("gsea", "kegg")) {
     #   df <- mutate(df, rank = rev(row_number(!!sym(y))))
     # } else {
-    df <- mutate(df, rank = row_number(!!sym(y)))
+    # df <- mutate(df, rank = row_number(!!sym(x_var)))
     # }
-    # print(as_tibble(df) %>% select(1, 2, 4))
     if (method == "gsea") {
         colour_path <- "black"
     } else {
@@ -479,7 +480,6 @@ plot_enrich <- function(
         label_x = label_x,
         title_size = title_size
     )
-    # expand_limits(y = max(df$generatio) + max(df$generatio) / ratio)
 }
 
 #' Pathway keyword dictionary for immune-related terms

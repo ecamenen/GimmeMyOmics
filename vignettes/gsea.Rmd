@@ -116,7 +116,6 @@ path2code_kegg <- read_tsv("https://rest.kegg.jp/list/pathway/mmu", FALSE)  %>%
   mutate(X1 = str_remove_all(X1, ".*\\:"))
 ```
 
-
 # All pathways
 ```{r}
 data("gse_go")
@@ -163,7 +162,7 @@ print_enrich(enrichment, method = method, regex = pathway_keywords()$cell)
 data("dea_pretty")
 (targeted_paths <- print_enrich(enrichment, method = method, regex = "eutrophil activation"))
 gene_path <- targeted_paths %>%
-    select(Genes) %>% 
+    select(`Enriched gene name`) %>% 
     map(~ str_split(., ";") %>% unlist() %>% sort()) %>% 
     pluck(1)
 
