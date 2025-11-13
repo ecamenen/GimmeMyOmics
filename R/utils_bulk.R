@@ -51,7 +51,8 @@ format_dea <- function(
     p_threshold = 0.05,
     name_id = "ensembl_gene_id",
     filtered = TRUE,
-    contrast = NULL
+    contrast = NULL,
+    dea = NULL
 ) {
     # required_cols <- c("ensembl_gene_id", "gene_name")
     # if (!all(required_cols %in% colnames(metadata_genes))) {
@@ -83,29 +84,32 @@ format_dea <- function(
           as_tibble() 
         
         if (filtered) {
-          if(is.null(contrast)) {
-            contrast <- levels(colData(dea)$condition)
+          if (!is.null(dea)) {
+            if (is.null(contrast)) {
+              contrast <- levels(colData(dea)$condition)
+            }
+            
+            to_kept <- colData(dea) %>% 
+              as.data.frame() %>%
+              filter(condition %in% contrast) %>%
+              rownames_to_column("Sample") %>%
+              group_by(condition) %>%
+              summarise(liste = list(Sample)) %>%
+              deframe() %>%
+              list.map(
+                f(x) ~ counts(dea) %>%
+                  .[, colnames(.) %in% x] %>%
+                  .[rowSums(. >= 10) >= 3, ] %>%
+                  rownames()
+              ) %>% 
+              unlist() %>%
+              unique() %>%
+              sort()
+            res <- filter(res, .data[[name_id]] %in% to_kept)
           }
-          to_kept <- colData(dea) %>% 
-            as.data.frame() %>%
-            filter(condition %in% contrast) %>%
-            rownames_to_column("Sample") %>%
-            group_by(condition) %>%
-            summarise(liste = list(Sample)) %>%
-            deframe() %>%
-            list.map(
-              f(x) ~ counts(dea) %>%
-                .[, colnames(.) %in% x] %>%
-                .[rowSums(. >= 10) >= 3, ] %>%
-                rownames()
-            ) %>% 
-            unlist() %>%
-            unique() %>%
-            sort()
           
           filter(res, abs(log2FoldChange) >= 0.01) %>%
-            filter(!is.na(padj)) %>%
-            filter(.data[[var]] %in% to_kept)
+            filter(!is.na(padj))
         } else {
           res
         }

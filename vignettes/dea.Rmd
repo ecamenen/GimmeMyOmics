@@ -157,7 +157,8 @@ dea_pretty <- format_dea(
     metadata_genes, 
     fc_threshold = fc_threshold, 
     p_threshold = p_threshold,
-    name_id = name_id
+    name_id = name_id,
+    dea = dea
 )
 
 table(pull(dea_pretty, "Expression")) %>% 

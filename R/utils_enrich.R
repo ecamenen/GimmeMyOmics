@@ -186,7 +186,7 @@ theme_enrich <- function(
         scale_x_continuous(breaks = pretty_breaks(n = 3))
     if (label_x == "Gene ratio")
         p <- p + scale_x_continuous(labels = label_percent(1), breaks = pretty_breaks(n = 3))
-    return(theme_enrich0(p, cex, colour_gradient, title, "FDR", title_size = title_size))
+    return(theme_enrich0(p, cex, colour_gradient, title, "P-adjusted", title_size = title_size))
 }
 
 theme_enrich0 <- function(
@@ -194,13 +194,13 @@ theme_enrich0 <- function(
         cex = 1,
         colour = c(palette_discrete()[1], "gray50", palette_discrete()[2]),
         title = NULL,
-        label_colour = "FDR",
+        label_colour = "P-adjusted",
         range = c(5, 12) * cex,
         trans = FALSE,
         power = 2,
         title_size = "# Leading genes",
         num = TRUE) {
-    if (label_colour == "FDR") {
+    if (label_colour == "P-adjusted") {
         label_func <- label_pvalue()
     } else {
         label_func <- label_number_auto()
@@ -282,7 +282,6 @@ theme_enrich0 <- function(
 #' @param colour Character vector of length 3, specifying the colors for the gradient fill of the points.
 #' @param label_x Character, the label for the x-axis. Default is `"generatio"` (gene ratio). For `method = "gsea"`, this can be changed to another column name.
 #' @param name_id A character, the name of the column containing gene IDs. This parameter is required only when using the "ora" method.
-
 #'
 #' @details
 #' The function performs the following steps:
@@ -522,9 +521,10 @@ pathway_keywords <- function() {
     l[["cell"]] <- c("eutrophil", "(acrophage)|(onocyte)", "endritic cell", "((natural killer)|(NK)) cell", "(T [- ]? cell)|(T-helper)|(CD[48][- ])", "B[- ]?cell", "NETosis", "Th\\d{1,2} cell")
     l[["cytokine"]] <- c("(nterleukins?)|(IL-?\\d{1,2})", "(nterferon)|(IFN[ABG])", "(rostaglandin)|([Aa]rachidonic)|(icosa)|([Ll]eukotriene)|([Dd]ocosahexaenoic)|([Ii]cosapentaenoic)|([Ll]ipoxin)|(esolvin)")
     l[["cytokine_full"]] <- c(l[["cytokine"]], "(tumor necrosis factor)|(TNF)|(NF-k)")
-    l[["immunity_full"]]  <- c(l[["immunity_additional"]], "[Ll]upus", "(steo[cb]last)|([Bb]one)|(keletal)|(ossification)", "[Aa]rthrit", "[Gg]lucocorticoid", "[Aa]cute")
-    l[["immunity"]] <- c(l[["cell"]], l[["cytokine"]], l[["cytokine_full"]], "(omplement)|([^ ]C2 )", "(oll-like)|(TLR )", "mTORC1", "(Fc gamma)|(FCG)", "etalloproteinas") %>% unique()
+    l[["immunity"]] <- c(l[["cell"]], l[["cytokine_full"]], "(omplement)|([^ ]C2 )", "(oll-like)|(TLR )", "mTORC1", "(Fc gamma)|(FCG)", "etalloproteinas") %>% unique()
     l[["immunity_additional"]] <- c(l[["immunity"]],  "STAT[ 35]", "AGE", "(PUMA)|(TP53)|( p53)", "([Ii]nflamm)|([Ii]mmun)", "hemokine", "mhc",  "phago((cytosis)|(some))", "leukocyte", "myeloid", "cytokine[^sis]", "granulocyte", "[Ll]ympho", "[Hh]emopo")
+    l[["immunity_full"]]  <- c(l[["immunity_additional"]], "[Ll]upus", "(steo[cb]last)|([Bb]one)|(keletal)|(ossification)", "[Aa]rthrit", "[Gg]lucocorticoid", "[Aa]cute")
+    
     l[["cell_cycle"]] <- c(
       "spindle",
       "mitotic",
