@@ -109,10 +109,35 @@ conditions <- dea@design %>%
   unlist() %>%
   str_trim() %>%
   unique()
-plotPCA(count_normalized, intgroup = conditions[-3]) +
-  GimmeMyPlot::theme_custom() + 
-  scale_color_discrete(type = palette_discrete()) +
-  stat_ellipse()
+
+
+pca_data <- plotPCA(count_normalized, intgroup = conditions[-3], returnData = TRUE)
+
+rv <- rowVars(assay(count_normalized))
+select <- order(rv, decreasing = TRUE)[seq_len(500)]
+pca <- prcomp(t(assay(count_normalized)[select, ]))
+
+percentVar <- pca$sdev^2 / sum(pca$sdev^2)
+
+centroids <- pca_data %>%
+  group_by(group) %>%
+  summarise(PC1 = mean(PC1), PC2 = mean(PC2))
+
+ggplot(pca_data, aes(PC1, PC2, color = group)) +
+  geom_point(size = 3) +
+  stat_ellipse() +
+  geom_point(
+    data = centroids,
+    aes(PC1, PC2, color = group),
+    shape = 4, size = 5, stroke = 1.5
+  ) +
+  labs(
+    x = paste0("PC1: ", round(percentVar[1] * 100), "% variance"),
+    y = paste0("PC2: ", round(percentVar[2] * 100), "% variance")
+  ) +
+  theme_custom() +
+  scale_color_discrete(type = palette_discrete())
+
 ```
 
 ```{r}
