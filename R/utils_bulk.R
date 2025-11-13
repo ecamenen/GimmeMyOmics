@@ -49,7 +49,9 @@ format_dea <- function(
     metadata_genes = NULL,
     fc_threshold = 1,
     p_threshold = 0.05,
-    name_id = "ensembl_gene_id"
+    name_id = "ensembl_gene_id",
+    filtered = TRUE,
+    contrast = NULL
 ) {
     # required_cols <- c("ensembl_gene_id", "gene_name")
     # if (!all(required_cols %in% colnames(metadata_genes))) {
@@ -66,7 +68,7 @@ format_dea <- function(
             by = name_id
         )
     }
-        mutate(
+        res <- mutate(
             tmp,
             log10p = -log10(padj),
             gene_name = str_remove_all(gene_name, "_\\d+"),
@@ -76,11 +78,37 @@ format_dea <- function(
                 TRUE ~ "ns"
             ),
             padj = ifelse(padj == 0, min(padj[padj > 0], na.rm = TRUE), padj)
-        ) %>%
-        filter(abs(log2FoldChange) >= 0.01) %>%
-        filter(!is.na(padj)) %>%
-        relocate("gene_name") %>%
-        as_tibble()
+        )  %>%
+          relocate("gene_name") %>%
+          as_tibble() 
+        
+        if (filtered) {
+          if(is.null(contrast)) {
+            contrast <- levels(colData(dea)$condition)
+          }
+          to_kept <- colData(dea) %>% 
+            as.data.frame() %>%
+            filter(condition %in% contrast) %>%
+            rownames_to_column("Sample") %>%
+            group_by(condition) %>%
+            summarise(liste = list(Sample)) %>%
+            deframe() %>%
+            list.map(
+              f(x) ~ counts(dea) %>%
+                .[, colnames(.) %in% x] %>%
+                .[rowSums(. >= 10) >= 3, ] %>%
+                rownames()
+            ) %>% 
+            unlist() %>%
+            unique() %>%
+            sort()
+          
+          filter(res, abs(log2FoldChange) >= 0.01) %>%
+            filter(!is.na(padj)) %>%
+            filter(.data[[var]] %in% to_kept)
+        } else {
+          res
+        }
 }
 
 #' Filter Top Differentially Expressed Genes
@@ -128,8 +156,13 @@ top_genes <- function(
     n = Inf,
     return_rank = FALSE,
     rank_by = "rank_pfc",
+    expression = TRUE,
     f = identity
 ) {
+    if ((n != Inf | isFALSE(expression)) & "Expression" %in% colnames(x)) {
+      x <- filter(x, Expression != "ns")
+    }
+    
     res <- x %>%
         mutate(
             pfc = -log10(padj) * log2FoldChange,
@@ -138,13 +171,12 @@ top_genes <- function(
             rank_pfc = dense_rank((rank_p + rank_fc) / 2)
         ) %>%
         arrange(f(abs(.data[[rank_by]]))) %>%
-        filter(Expression != "ns", abs(log2FoldChange) >= fc_threshold, padj <= p_threshold) %>%
+        filter(abs(log2FoldChange) >= fc_threshold, padj <= p_threshold) %>%
         head(n = n)
-
+    
     if (!return_rank) {
         res <- select(res, -c(pfc, starts_with("rank")))
     }
-
     return(res)
 }
 
@@ -157,8 +189,8 @@ theme_bulk <- function(p, cex = 1, show_axis = TRUE, colour = "black") {
             axis.text = element_text(size = 15 * cex, color = colour),
             axis.ticks = element_line(color = colour, linewidth = 1),
             plot.title = element_text(size = 22 * cex, hjust = 0.5),
-            legend.title = element_text(size = 12 * cex),
-            legend.text = element_text(colour = colour, size = 10 * cex),
+            legend.title = element_text(size = 18 * cex),
+            legend.text = element_text(colour = colour, size = 15 * cex),
             panel.border = element_rect(colour = colour, fill = NA, size = 1)
         )
     if (show_axis) {
@@ -248,6 +280,7 @@ volcano_plot <- function(
         title = NULL,
         legend = "right",
         cex = 1.5,
+        cex_genes = 6,
         fc_threshold = 0.5,
         p_threshold = 0.05,
         force = 10,
@@ -292,9 +325,7 @@ volcano_plot <- function(
         scale_fill_manual(values = c("Up-regulated" = "#FB9A99", "Down-regulated" = "#A6CEE3", "ns" = "gray80")) +
         scale_x_continuous(trans = trans_new("lognx", log_func, exp_func), breaks = c(rev(breaks_x) * -1, breaks_x) %>% round(1), labels = format_labels) +
         scale_y_continuous(trans = trans_new("log10x", function(x) -log10(x), function(x) 10^(-x)), breaks = breaks_y, labels = format_labels) +
-        xlab("Fold change") +
-        ylab("False Discovery Rate") +
-        ggtitle(title) +
+        labs(title, fill = "DEG", x = "Fold change", y = "P-adjusted") +
         theme_classic() %>%
         theme_bulk(cex) +
         theme(legend.position = legend)
@@ -311,7 +342,7 @@ volcano_plot <- function(
                 label = str_wrap(gene_name, width),
                 colour = Expression
             ),
-            size = cex * 6,
+            size = cex * cex_genes,
             force = force,
             segment.color = "grey50",
             fontface = fontface,
@@ -370,23 +401,126 @@ volcano_plot <- function(
 #' print_dea(dea_results)
 #'
 #' @export
-print_dea <- function(x, base = 2, ...) {
+print_dea <- function(x, base = 2, metadata = FALSE, dea = NULL, description = FALSE, database = "entrezgene_id", filtered = TRUE, var = "ensembl_gene_id", ...) {
     func <- if (base == 2) function(x) 2^x else exp
-    top_genes(x, n = 10000, fc_threshold = 0, p_threshold = 1, ...) %>%
-    filter(Expression != "ns") %>%
-    mutate(
+    res <- top_genes(x, n = Inf, fc_threshold = 0, p_threshold = 1, ...) %>%
+      rename(
+        `P-adjusted` = "padj",
+        `Full name` = "description"
+        ) %>%
+      mutate(
         `Fold-change` = ifelse(
             log2FoldChange > 0,
             round(func(log2FoldChange), 2),
             -round(func(abs(log2FoldChange)), 2)
         ),
-        `P-adjusted` = format(padj, digits = 2, scientific = TRUE),
-        `Full name` = to_title(description) %>% 
+        `P-adjusted` = format(`P-adjusted`, digits = 2, scientific = TRUE),
+        `Full name` = to_title(`Full name`) %>% 
           str_remove_all("\\[.*") %>% 
           str_squish()
+    )
+    
+    if (isTRUE(filtered)) {
+      res <- filter(res, Expression != "ns")
+    }
+    
+    if (!is.null(dea)) {
+      res <- stats_by_condition(dea, dea_pretty = res, var = var)
+    }
+    
+    if (isTRUE(description)) {
+      res <- res %>%
+        rowwise() %>%
+        mutate(
+          Description = {
+            if (is.na(.data[[database]]) || .data[[database]] == "") {
+              ""
+            } else {
+              ncbi_description(.data[[database]], metadata_genes, database) %>%
+                str_remove_all("^.*?: ") %>%
+                str_replace_all("^NA$", "")
+            }
+          }
+        ) %>%
+        ungroup()
+    }
+    
+    res <- rename(res, Gene = "gene_name")
+    
+    kept <- c("Gene", "Full name", "Fold-change", "P-adjusted")
+    if (!metadata) {
+    res <- select(res, contains(c(kept, "Description", "Median")))
+    } else {
+      res <- select(res, -c("baseMean", "log2FoldChange", "lfcSE", "pvalue", "log10p", "Expression")) %>%
+        select(kept, everything())
+    }
+    
+    return(res)
+}
+
+stats_by_condition <- function(
+    dea,
+    contrast = levels(dea$condition),
+    dea_pretty = NULL,
+    var = "ensembl_gene_id"
+) {
+  
+  df_norm_counts <- counts(dea, normalized = TRUE) %>%
+    as.data.frame()
+  
+  if (!is.null(dea_pretty)) {
+    df_norm_counts <- pull(dea_pretty, var) %>%
+      df_norm_counts[. ,]
+  }
+  
+  df_norm_counts <- rownames_to_column(df_norm_counts, var = var)
+  
+  df_long <- df_norm_counts %>%
+    pivot_longer(
+      cols = -!!sym(var), 
+      names_to = "Sample_ID", 
+      values_to = "Count"
     ) %>%
-    rename(Gene = "gene_name") %>%
-    select(Gene, `Full name`, `Fold-change`, `P-adjusted`)
+    mutate(
+      condition = colData(dea)$condition[match(Sample_ID, colnames(counts(dea)))]
+    ) %>%
+    filter(condition %in% contrast)
+  
+  
+  result_summary <- df_long %>%
+    group_by(!!sym(var), condition) %>%
+    summarise(
+      Dispersion_Score = print_dispersion(Count),
+      .groups = "drop"
+    )
+  
+  result_wide <- result_summary %>%
+    pivot_wider(
+      names_from = condition,
+      values_from = Dispersion_Score,
+      names_prefix = "Median\u00B1IQR ("
+    )
+  
+  names(result_wide)[-1] <- paste0(names(result_wide)[-1], ")")
+  if (!is.null(dea_pretty)) {
+    left_join(dea_pretty, result_wide, by = var)
+  } else {
+    result_wide
+  }
+}
+
+#' @export
+omics2excel <- function(data, file, func = function(x) print_dea(x) %>% select(-`Full name`)) {
+  wb <- createWorkbook()
+  list.map(
+    data,
+    f(x, xx, xxx) ~ {
+      sheet_name <- str_replace(xxx, "/", "_")
+      addWorksheet(wb, sheetName = sheet_name)
+      writeData(wb, sheet = sheet_name, x = func(x))
+    }
+  )
+  saveWorkbook(wb, file, overwrite = TRUE)
 }
 
 #' Fetches Gene Description from NCBI
@@ -423,10 +557,10 @@ ncbi_description <- function(x, metadata_genes, database = "ensembl_gene_id") {
 
     gene_subset <- filter(metadata_genes, .data[[database]] == x) %>%
         slice(1)
-    gene_query <- pull(gene_subset, "ensembl_gene_id")
+    gene_query <- pull(gene_subset, database)
 
     if (!is.na(gene_query)) {
-        url <- paste0("https://www.ncbi.nlm.nih.gov/gene/?term=", gene_query)
+        url <- paste0("https://www.ncbi.nlm.nih.gov/gene/",ifelse(database == "ensembl_gene_id", "?term=", ""), gene_query)
         page <- tryCatch(read_html(url), error = function(e) return(NA))
 
         if (is.na(page)) {
@@ -539,3 +673,68 @@ plot_heatmap <- function(
         ...
     )
 }
+
+custom_upset_barplot <- function(gene_lists, top_n = Inf, only_intersect = TRUE, ratio = 2, breaks = waiver(), width = 50) {
+  # Convert to long format
+  long_df <- gene_lists %>%
+    tibble::enframe(name = "group", value = "gene") %>%
+    unnest_longer(gene)
+  
+  # Create binary matrix
+  binary_df <- long_df %>%
+    mutate(present = 1) %>%
+    pivot_wider(names_from = group, values_from = present, values_fill = 0)
+  
+  # Identify group columns
+  group_cols <- setdiff(names(binary_df), "gene")
+  
+  # Generate combinations
+  binary_df <- binary_df %>%
+    rowwise() %>%
+    mutate(combination = paste(group_cols[which(c_across(all_of(group_cols)) == 1)], collapse = " & ")) %>%
+    ungroup()
+  
+  # Count intersection sizes
+  intersection_counts <- binary_df %>%
+    dplyr::count(combination, sort = TRUE)
+  
+  # Genes associated with each combination
+  gene_labels <- binary_df %>%
+    filter(combination %in% intersection_counts$combination) %>%
+    group_by(combination) %>%
+    summarise(genes = paste(gene, collapse = ", "), .groups = "drop")
+  
+  df_plot <- left_join(intersection_counts, gene_labels, by = "combination") %>%
+    mutate(n_groups = str_count(combination, " & ") + 1) %>%
+    arrange(desc(n_groups), desc(n)) %>%
+    slice_head(n = top_n)
+  
+  if (isTRUE(only_intersect)) {
+    df_plot <- filter(df_plot, str_detect(combination, " & "))
+  }
+  if (only_intersect == "inverse") {
+    df_plot <- filter(df_plot, !str_detect(combination, " & "))
+  }
+  
+  
+  # Assign row index (top = highest n_groups)
+  df_plot <- df_plot %>%
+    mutate(row_id = row_number())
+  
+  ggplot(df_plot, aes(x = row_id, y = n, fill = as.factor(n_groups))) +
+    geom_col() +
+    geom_text(aes(label = str_wrap(genes, width  = width)), hjust = 0, vjust = 0.5, size = 3, nudge_y = 0.1) +
+    coord_flip() +
+    scale_x_continuous(
+      breaks = df_plot$row_id,
+      labels = df_plot$combination,
+      trans = "reverse"
+    ) +
+    scale_y_continuous(breaks = breaks) +
+    scale_fill_brewer(palette = "Reds", direction = 1) +
+    labs(title = NULL, x = NULL, y = NULL, fill = "# Sets") +
+    theme_minimal() +
+    expand_limits(y = max(df_plot$n) + max(df_plot$n) / ratio) +
+    theme(legend.position = "none")
+}
+

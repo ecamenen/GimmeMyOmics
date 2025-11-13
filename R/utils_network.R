@@ -492,7 +492,8 @@ map_enrich <- function(
           size_edge = size_edge,
           showCategory = showCategory,
           ...
-        ) +
+        ) + 
+        labs(colour = "P-adjusted") +
         theme_void() +
         theme(legend.title = element_text(face = "italic", size = 12 * cex))
     
