@@ -261,37 +261,7 @@ list.map(
 
 # Multiple related pathways
 ```{r, eval = FALSE}
-(targeted_paths <- print_enrich(enrichment, method = method, regex = "eutrophil"))
-l_path <- list.map(
-    pull(targeted_paths, Description), 
-    f(i) ~ filter(targeted_paths, Description == i) %>%
-        pull(Genes) %>%
-        str_split(";") %>%
-        pluck(1) %>%
-        sort()
-    ) %>% set_names(names(.) %>% format_path(100))
-gene_path <- unlist(l_path) %>% unique() %>% sort()
-
-filter(dea_pretty, `gene_name` %in% gene_path) %>% 
-    plot_heatmap(metadata_samples, count_normalized, cutree_cols = 2)
-```
-
-```{r, eval = FALSE}
-gene_ont <- "gene_name"
-gene_path <- list_table(l_path) %>% rownames()
-gene_path0 <- #l_de2[[1]] %>%
-  dea_pretty %>%
-  filter(str_detect(!!sym(gene_ont), paste0("^", gene_path, "$", collapse = "|"))) %>% 
-  top_genes(1e-9, 1, return_rank = TRUE) %>%
-  mutate(pfc = -pfc)
-gene_path1 <- gene_path0 %>% 
-  filter(!duplicated(!!sym(gene_ont))) %>% 
-  set_rownames(pull(., gene_ont)) %>% 
-  select(log2FoldChange) %>% 
-  set_colnames("value2") %>% 
-  rownames_to_column("ID")
-
-common_genes <- list_count(l_path) %>% unlist() %>% unname()
+l_path <- extract_path(enrichment, method = method, regex = "eutrophil")
 
 list_count(l_path) %>%
     list.map(
@@ -308,11 +278,26 @@ list_count(l_path) %>%
     ) + 
     theme(axis.ticks.y = element_blank(), panel.border = element_blank())
 
-# list_table(l_path) %>% heatmap_enrich(1.25, 100)
-list.map(l_path, f(i) ~i %>% .[. %in% common_genes]) %>%
-    list_table() %>% 
-    select(colnames(.) %>% sort()) %>%
-    heatmap_enrich(1.25, 100)
+gene_path <- unlist(l_path) %>% unique() %>% sort()
+filter(dea_pretty, `gene_name` %in% gene_path) %>% 
+    plot_heatmap(metadata_samples, count_normalized, cutree_cols = 2)
+```
+
+```{r}
+heatmap_enrich_comm(
+  enrichment,
+  method = "gsea",
+  # dea_pretty,
+  regex = pathway_keywords()$immunity_additional,
+  width_text = 100
+)
+heatmap_enrich_full(
+  enrichment,
+  method = "gsea",
+  # dea_pretty,
+  regex = pathway_keywords()$immunity_additional,
+  width_text = 100
+)
 ```
 
 # Pathway network

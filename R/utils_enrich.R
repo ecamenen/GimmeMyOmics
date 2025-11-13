@@ -610,7 +610,14 @@ list_count <- function(x) {
         )
 }
 
-heatmap_enrich <- function(x, cex = 1, width_text = 20, power = 2) {
+heatmap_enrich0 <- function(
+    x,
+    gene_path,
+    cex = 1,
+    width_text = 20,
+    power = 2
+    ) {
+  
     x %>%
         mutate(ID = rownames(.)) %>%
         gather("key", "value", -ID) %>%
@@ -618,7 +625,7 @@ heatmap_enrich <- function(x, cex = 1, width_text = 20, power = 2) {
             key = str_wrap(key, width_text),
             ID = str_wrap(ID, width_text)
         ) %>%
-        left_join(gene_path1, by = "ID") %>%
+        left_join(gene_path, by = "ID") %>%
         mutate(
             value2 = ifelse(value == 0, NA, value2),
             key = factor(key, levels = colnames(x) %>% str_wrap(width_text))
@@ -643,4 +650,65 @@ heatmap_enrich <- function(x, cex = 1, width_text = 20, power = 2) {
             legend.title = element_text(face = "bold.italic", size = 12 * cex),
             legend.text = element_text(size = 10 * cex, color = "grey40")
         )
+}
+
+#' @export
+extract_pathway_genes <- function(x, method = "ora", ...) {
+  if (method == "ora") {
+    var <- "DEG name"
+  } else {
+    var <- "Enriched gene name"
+  }
+  targeted_paths <- print_enrich(x, method = method, ...)
+  list.map(
+    pull(targeted_paths, Pathway), 
+    f(i) ~ filter(targeted_paths, Pathway == i) %>%
+      pull(var) %>%
+      str_split(";") %>%
+      pluck(1) %>%
+      sort()
+  ) %>% set_names(names(.) %>% format_path(100))
+}
+
+#' @export
+heatmap_enrich_comm <- function(x, y, cex = 1.25, width_text = 20, power = 2, method = "ora", ...) {
+  l_path <- extract_pathway_genes(x, method = method, ...)
+  gene_path <- gene2fc(l_path, x, y)
+  common_genes <- list_count(l_path) %>% unlist() %>% unname()
+  list.map(l_path, f(i) ~i %>% .[. %in% common_genes]) %>%
+    list_table() %>% 
+    select(colnames(.) %>% sort()) %>%
+    heatmap_enrich0(gene_path = gene_path, cex = cex, width_text = width_text)
+}
+
+#' @export
+heatmap_enrich_full <- function(x, y = NULL, cex = 1.25, width_text = 20, power = 2, method = "ora", ...) {
+  l_path <- extract_pathway_genes(x, method = method, ...)
+  gene_path <- gene2fc(l_path, x, y)
+  list_table(l_path) %>%
+    heatmap_enrich0(gene_path = gene_path, cex = cex, width_text = width_text)
+}
+
+gene2fc <- function(l_path, x = NULL, y = NULL, gene_ont = "gene_name") {
+  # TODO: if method = gsea, no need for x, extract FC from gsea
+  genes <- list_table(l_path) %>% rownames()
+  if (class(x) == "gseaResult") {
+    x@geneList %>% 
+      .[names(.) %in% genes] %>%
+      data.frame(
+        ID = names(.),
+        value2 = .
+      )
+  } else {
+  y %>%
+    filter(str_detect(!!sym(gene_ont), paste0("^", genes, "$", collapse = "|"))) %>% 
+    top_genes(1e-9, 1, return_rank = TRUE) %>%
+    mutate(pfc = -pfc) %>% 
+    filter(!duplicated(!!sym(gene_ont))) %>%
+    as.data.frame() %>%
+    set_rownames(pull(., gene_ont)) %>%
+    select(log2FoldChange) %>% 
+    set_colnames("value2") %>% 
+    rownames_to_column("ID")
+  }
 }
