@@ -160,10 +160,10 @@ top_genes <- function(
     n = Inf,
     return_rank = FALSE,
     rank_by = "rank_pfc",
-    expression = TRUE,
+    expression = FALSE,
     f = identity
 ) {
-    if ((n != Inf | isFALSE(expression)) & "Expression" %in% colnames(x)) {
+    if (isFALSE(expression) & "Expression" %in% colnames(x)) {
       x <- filter(x, Expression != "ns")
     }
     
@@ -455,7 +455,7 @@ print_dea <- function(x, base = 2, metadata = TRUE, dea = NULL, description = FA
     if (!metadata) {
     res <- select(res, contains(c(kept, "Description", "Median")))
     } else {
-      res <- select(res, -c("baseMean", "log2FoldChange", "lfcSE", "pvalue", "log10p", "Expression")) %>%
+      res <- select(res, -contains(c("baseMean", "log2FoldChange", "lfcSE", "pvalue", "log10p", "Expression"))) %>%
         select(kept, everything())
     }
     
@@ -514,7 +514,7 @@ stats_by_condition <- function(
 }
 
 #' @export
-omics2excel <- function(data, file, func = function(x) print_dea(x) %>% select(-`Full name`)) {
+omics2excel <- function(data, file, func = function(x) print_dea(x)) {
   wb <- createWorkbook()
   list.map(
     data,
