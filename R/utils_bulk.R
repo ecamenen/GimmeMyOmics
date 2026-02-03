@@ -405,7 +405,7 @@ volcano_plot <- function(
 #' print_dea(dea_results)
 #'
 #' @export
-print_dea <- function(x, base = 2, metadata = FALSE, dea = NULL, description = FALSE, database = "entrezgene_id", filtered = TRUE, var = "ensembl_gene_id", ...) {
+print_dea <- function(x, base = 2, metadata = TRUE, dea = NULL, description = FALSE, database = "entrezgene_id", filtered = TRUE, var = "ensembl_gene_id", ...) {
     func <- if (base == 2) function(x) 2^x else exp
     res <- top_genes(x, n = Inf, fc_threshold = 0, p_threshold = 1, ...) %>%
       rename(
@@ -678,6 +678,7 @@ plot_heatmap <- function(
     )
 }
 
+#' @export
 custom_upset_barplot <- function(gene_lists, top_n = Inf, only_intersect = TRUE, ratio = 2, breaks = waiver(), width = 50) {
   # Convert to long format
   long_df <- gene_lists %>%
@@ -742,3 +743,34 @@ custom_upset_barplot <- function(gene_lists, top_n = Inf, only_intersect = TRUE,
     theme(legend.position = "none")
 }
 
+#' @export
+dea_limma <- function(x, y, contrast_formula = NULL, batch = NULL) {
+  if (is.null(batch)) {
+    design <- model.matrix(~ 0 + y)
+  } else {
+    design <- model.matrix(~ 0 + y + batch)
+  }
+  colnames(design) <- colnames(design) %>% str_remove_all("^y")
+  
+  if(is.null(contrast_formula))
+    contrast_formula <- combn(levels(y), 2, simplify = FALSE) %>%
+    sapply(function(x) paste(x[2], "-", x[1]))
+  
+  contrast.matrix <- makeContrasts(contrasts = contrast_formula, levels = design)
+  
+  lmFit(x, design) %>%
+    contrasts.fit(contrast.matrix) %>%
+    eBayes()
+}
+
+#' @export
+format_limma <- function(x, ...) {
+  rename(
+    x,
+    padj = adj.P.Val,
+    log2FoldChange = logFC,
+    pvalue = P.Value,
+    baseMean = AveExpr
+  ) %>%
+    format_dea(...)
+}
