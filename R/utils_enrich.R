@@ -87,22 +87,24 @@ print_enrich <- function(x, method = "ora", regex = NULL, pval = 0.05) {
 
     x <- switch(
         method,
-        "enrichr" = x %>%
-          mutate(
+        
+        "enrichr" = mutate(
+            x,
             Description = Term,
             FDR = Adjusted.P.value,
             Count = as.numeric(str_split_fixed(Overlap, "/", 2)[, 1]),
             bg = as.numeric(str_split_fixed(Overlap, "/", 2)[, 2])
           ),
-        "gsea" = x %>%
-            mutate(
+        
+        "gsea" = mutate(
+                x,
                 FDR = p.adjust,
                 Count = sapply(stri_split_fixed(core_enrichment, "/"), function(i) length(unique(i))),
                 bg = setSize,
                 Genes = sapply(stri_split_fixed(core_enrichment, "/"), function(i) paste(unique(i), collapse = ";"))
             ) %>%
             rename(pval = "p.adjust"),
-        x %>%
+        
           mutate(
             x,
             FDR = p.adjust,
@@ -122,6 +124,7 @@ print_enrich <- function(x, method = "ora", regex = NULL, pval = 0.05) {
     res <- x %>%
         filter(FDR <= pval) %>%
         rename(`Nb DEG` = Count, `Nb genes` = bg) %>%
+        arrange(FDR) %>%
         mutate(
             FDR = format(FDR, digits = 3, scientific = TRUE),
             `DEG/Genes` = round(`Nb DEG` / `Nb genes` * 100, 1)
@@ -346,8 +349,7 @@ plot_enrich <- function(
         path2gene = NULL,
         colour = c(palette_discrete()[1], "grey80", palette_discrete()[2]),
         regex = NULL,
-        label_x = "generatio",
-        name_id = "genes") {
+        label_x = "generatio") {
     func <- function(x) {
         str_remove_all(x, "Genes ((down)|(up))-regulated ((in ?)|(with))") %>%
             str_remove_all("comparison of ") %>%
@@ -357,94 +359,49 @@ plot_enrich <- function(
             str_remove_all("the ") %>%
             str_remove(" - .*")
     }
-    if (!is.null(regex)) {
-      x <- filter_gsea(x, regex)
-    }
-    x <- as.data.frame(x)
-    if(nrow(x) == 0) {
+
+    df <- print_enrich(x, method = method, regex = regex, pval = Inf) %>%
+      mutate(`P-adjusted` = as.numeric(`P-adjusted`))
+    if (nrow(df) == 0) {
       return(NULL)
     }
     if (method == "gsea") {
-        df <- mutate(
-            x,
-            Adjusted.P.value = p.adjust,
-            Term = Description %>%
-                func() %>%
-                to_title(),
-            Count = str_split(core_enrichment, "/") %>% sapply(length),
-            Overlap = core_enrichment
-        )
         title_size <- "# Leading genes"
-        if (label_x == "generatio") {
-            df <- mutate(df, generatio = Count / setSize)
+        df <- df <- mutate(df, Count = `Nb enriched genes`)
+        if (label_x == "NES") {
+          df <- mutate(df, generatio = `Normalized enrichment score`)
+        } else if (label_x == "generatio") {
+            df <- mutate(df, generatio = `% enriched/total genes` / 100)
             label_x <- "Gene ratio"
         } else {
             df <- mutate(df, generatio = !!sym(label_x))
         }
         df <- arrange(df, desc(generatio))
         x_var <- "NES"
-    } else if (method == "ora") {
-        title_size <- "# DEG"
-        label_x <- "Gene ratio"
-        df <- mutate(
-            x,
-            Adjusted.P.value = p.adjust,
-            Term = Description %>%
-                func() %>%
-                to_title(),
-            Count = str_remove_all(GeneRatio, "\\/.*") %>% as.numeric(),
-            generatio = Count %>% divide_by(str_remove_all(BgRatio, "\\/.*") %>% as.numeric())
-        )
-        if (!is.null(path2gene)) {
-            n_paths <- list.mapv(
-                pull(x, 1),
-                f(i) ~
-                    path2gene[pull(path2gene, 1) %in% i, ] %>%
-                    pull(2) %>%
-                    length()
-            )
-            df <- mutate(df, bg = n_paths)
-        } else {
-            df <- mutate(df, bg = n)
-        }
-        x_var <- "p.adjust"
     } else {
         title_size <- "# DEG"
         label_x <- "Gene ratio"
         df <- mutate(
-            x,
-            Count = str_remove_all(Overlap, "\\/.*") %>% as.numeric(),
-            generatio = {
-                str_split(Overlap, "/") %>%
-                    sapply(function(i) as.numeric(i[1]) / as.numeric(i[2]))
-            },
-            Term = Term %>%
-              func() %>%
-              to_title()
+          df, 
+          generatio = `% DEG/total genes` / 100,
+          Count = `Nb DEG`
         )
-        x_var <- "Adjusted.P.value"
+        x_var <- "P-adjusted"
     }
-    df0 <- filter(df, Adjusted.P.value <= 0.05) %>%
-        filter(!is.na(Term))
+    df0 <- filter(df, `P-adjusted` <= 0.05) %>%
+        filter(!is.na(Pathway))
     if (nrow(df0) < n)
         df0 <- df
     if (x_var == "NES") {
-      df0 <- arrange(df0, desc(abs(NES)))
+      df0 <- arrange(df0, desc(abs(`Normalized enrichment score`)))
     } else {
       df0 <- arrange(df0, abs(!!sym(x_var)))
     }
     y <- "generatio"
-    # if (method %in% c("gsea", "kegg")) {
-    #   df0 <- arrange(df0, Adjusted.P.value)
-    #   y <- "Adjusted.P.value"
-    # } else {
-    #   df0  <- arrange(df0, desc(Combined.Score))
-    #   y <- "Combined.Score"
-    # }
     df <- head(df0, n) %>%
         mutate(
             label = {
-                str_remove_all(Term, "\\(.*\\)") %>%
+                str_remove_all(Pathway, "\\(.*\\)") %>%
                     str_remove_all("((ORPHA)|(WP)|(HSA)|(R-)|(CL:)|(BTO:)|(PDB:)).*") %>%
                     str_pretty(width) %>%
                     str_trim() %>%
@@ -452,19 +409,14 @@ plot_enrich <- function(
             },
             rank = row_number(!!sym(y))
         )
-    # if (method %in% c("gsea", "kegg")) {
-    #   df <- mutate(df, rank = rev(row_number(!!sym(y))))
-    # } else {
-    # df <- mutate(df, rank = row_number(!!sym(x_var)))
-    # }
     if (method == "gsea") {
         colour_path <- "black"
     } else {
-        colour_path <- ifelse(df$Adjusted.P.value <= 0.05, palette_discrete()[1], "gray50")
+        colour_path <- ifelse(df$`P-adjusted` <= 0.05, palette_discrete()[1], "gray50")
     }
     p <- ggplot(df, aes(generatio, rank)) +
         geom_point(
-            aes(fill = Adjusted.P.value, size = Count),
+            aes(fill = `P-adjusted`, size = Count),
             colour = "black",
             pch = 21,
             # stroke = NA
