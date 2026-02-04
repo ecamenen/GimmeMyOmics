@@ -116,6 +116,7 @@ enrichr_pairwise_termsim <- function(dummy) {
 }
 
 # term2gene_enrichr("CellMarker_2024")
+#' @export
 term2gene_enrichr <- function(x, to_lower = FALSE) {
   res <- read_delim(
     paste0("https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=", x),

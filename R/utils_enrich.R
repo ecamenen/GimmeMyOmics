@@ -470,12 +470,12 @@ plot_enrich <- function(
 #' @export
 pathway_keywords <- function() {
     l <- list()
-    l[["cell"]] <- c("eutrophil", "(acrophage)|(onocyte)", "endritic cell", "((natural killer)|(NK)) cell", "(T [- ]? cell)|(T-helper)|(CD[48][- ])", "B[- ]?cell", "NETosis", "Th\\d{1,2} cell")
+    l[["cell"]] <- c("eutrophil", "(acrophage)|(onocyte)", "endritic [Cc]ell", "((atural killer)|(NK)) [Cc]ell", "([TB][- ]? [Cc]ell)|(T[- ]?helper)|(CD[48][- ])", "NETosis", "Th\\d{1,2} [Cc]ell")
     l[["cytokine"]] <- c("(nterleukins?)|(IL-?\\d{1,2})", "(nterferon)|(IFN[ABG])", "(rostaglandin)|([Aa]rachidonic)|(icosa)|([Ll]eukotriene)|([Dd]ocosahexaenoic)|([Ii]cosapentaenoic)|([Ll]ipoxin)|(esolvin)")
-    l[["cytokine_full"]] <- c(l[["cytokine"]], "(tumor necrosis factor)|(TNF)|(NF-k)")
+    l[["cytokine_full"]] <- c(l[["cytokine"]], "(umor [Nn]ecrosis factor)|(TNF)|(NF-k)")
     l[["immunity"]] <- c(l[["cell"]], l[["cytokine_full"]], "(omplement)|([^ ]C2 )", "(oll-like)|(TLR )", "mTORC1", "(Fc gamma)|(FCG)", "etalloproteinas") %>% unique()
-    l[["immunity_additional"]] <- c(l[["immunity"]],  "STAT[ 35]", "AGE", "(PUMA)|(TP53)|( p53)", "([Ii]nflamm)|([Ii]mmun)", "hemokine", "mhc",  "phago((cytosis)|(some))", "leukocyte", "myeloid", "cytokine[^sis]", "granulocyte", "[Ll]ympho", "[Hh]emopo")
-    l[["immunity_full"]]  <- c(l[["immunity_additional"]], "[Ll]upus", "(steo[cb]last)|([Bb]one)|(keletal)|(ossification)", "[Aa]rthrit", "[Gg]lucocorticoid", "[Aa]cute")
+    l[["immunity_additional"]] <- c(l[["immunity"]],  "STAT[ 35]", "AGE", "(PUMA)|(TP53)|( p53)", "([Ii]nflamm)|([Ii]mmun)", "hemokine", "mhc",  "phago((cytosis)|(some))", "[Ll]eukocyte", "[Mm]yeloid", "[Cc]ytokine[^sis]", "ranulocyte", "[Ll]ympho", "[Hh]emopo")
+    l[["immunity_full"]]  <- c(l[["immunity_additional"]], "[Ll]upus", "(steo[cb]last)|([Bb]one)|(keletal)|([Oo]ssification)", "[Aa]rthrit", "[Gg]lucocorticoid", "[Aa]cute")
     
     l[["cell_cycle"]] <- c(
       "spindle",
@@ -567,9 +567,9 @@ heatmap_enrich0 <- function(
     gene_path,
     cex = 1,
     width_text = 20,
-    power = 2
+    var = "log2FoldChange"
     ) {
-  
+    power <- ifelse(var == "log2FoldChange", 2, 10)
     x %>%
         mutate(ID = rownames(.)) %>%
         gather("key", "value", -ID) %>%
@@ -579,7 +579,11 @@ heatmap_enrich0 <- function(
         ) %>%
         left_join(gene_path, by = "ID") %>%
         mutate(
-            value2 = ifelse(value == 0, NA, value2),
+          value2 = case_when(
+            value == 0 ~ NA_real_,
+            var == "log2FoldChange" ~ value2,
+            TRUE ~ -value2
+          ),
             key = factor(key, levels = colnames(x) %>% str_wrap(width_text))
         ) %>%
         ggplot(aes(ID, key, fill = value2)) +
@@ -587,7 +591,7 @@ heatmap_enrich0 <- function(
         scale_fill_gradientn(
             colours = brewer.pal(11, "Spectral") %>% rev(),
             na.value = "white",
-            name = "Fold Change",
+            name = ifelse(var == "log2FoldChange", "Fold Change", "P-value"),
             breaks = pretty_breaks(5),
             labels = function(x) expx_trans(x, base = power) %>% round(1)
             # name = "-log10(FDR) \n* log2(FC)"
@@ -623,25 +627,25 @@ extract_pathway_genes <- function(x, method = "ora", ...) {
 }
 
 #' @export
-heatmap_enrich_comm <- function(x, y, cex = 1.25, width_text = 20, power = 2, method = "ora", ...) {
+heatmap_enrich_comm <- function(x, y, cex = 1.25, width_text = 20, method = "ora", var = "log2FoldChange", ...) {
   l_path <- extract_pathway_genes(x, method = method, ...)
-  gene_path <- gene2fc(l_path, x, y)
+  gene_path <- gene2fc(l_path, x, y, var = var)
   common_genes <- list_count(l_path) %>% unlist() %>% unname()
   list.map(l_path, f(i) ~i %>% .[. %in% common_genes]) %>%
     list_table() %>% 
     select(colnames(.) %>% sort()) %>%
-    heatmap_enrich0(gene_path = gene_path, cex = cex, width_text = width_text)
+    heatmap_enrich0(gene_path = gene_path, cex = cex, width_text = width_text, var = var)
 }
 
 #' @export
-heatmap_enrich_full <- function(x, y = NULL, cex = 1.25, width_text = 20, power = 2, method = "ora", ...) {
+heatmap_enrich_full <- function(x, y = NULL, cex = 1.25, width_text = 20, method = "ora", var = "log2FoldChange", ...) {
   l_path <- extract_pathway_genes(x, method = method, ...)
-  gene_path <- gene2fc(l_path, x, y)
+  gene_path <- gene2fc(l_path, x, y, var = var)
   list_table(l_path) %>%
-    heatmap_enrich0(gene_path = gene_path, cex = cex, width_text = width_text)
+    heatmap_enrich0(gene_path = gene_path, cex = cex, width_text = width_text, var = var)
 }
 
-gene2fc <- function(l_path, x = NULL, y = NULL, gene_ont = "gene_name") {
+gene2fc <- function(l_path, x = NULL, y = NULL, gene_ont = "gene_name", var = "log2FoldChange") {
   # TODO: if method = gsea, no need for x, extract FC from gsea
   genes <- list_table(l_path) %>% rownames()
   if (class(x) == "gseaResult") {
@@ -654,12 +658,11 @@ gene2fc <- function(l_path, x = NULL, y = NULL, gene_ont = "gene_name") {
   } else {
   y %>%
     filter(str_detect(!!sym(gene_ont), paste0("^", genes, "$", collapse = "|"))) %>% 
-    top_genes(1e-9, 1, return_rank = TRUE) %>%
-    mutate(pfc = -pfc) %>% 
+    top_genes(.Machine$double.xmin, 1, return_rank = TRUE, expression = TRUE) %>%
     filter(!duplicated(!!sym(gene_ont))) %>%
     as.data.frame() %>%
     set_rownames(pull(., gene_ont)) %>%
-    select(log2FoldChange) %>% 
+    select(all_of(var)) %>% 
     set_colnames("value2") %>% 
     rownames_to_column("ID")
   }

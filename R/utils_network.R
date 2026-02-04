@@ -1,3 +1,4 @@
+#' @export
 bind_gsea <- function(x) {
     x[[1]]@result <- list.map(x, f(i) ~i@result) %>% bind_rows()
     x[[1]]@geneSets <- list.map(x, f(i) ~i@geneSets) %>% flatten()
@@ -262,7 +263,7 @@ if (!is.null(highlighted)) {
 
 heatmap_enrich2 <- function(
     x,
-    foldChange,
+    foldChange = NULL,
     wrap = 50,
     regex = NULL,
     width = 20,
