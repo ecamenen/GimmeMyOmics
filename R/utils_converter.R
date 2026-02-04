@@ -136,7 +136,11 @@ term2gene_enrichr <- function(x, to_lower = FALSE) {
       !is.na(Gene),
       Gene != ""
     ) %>%
-    mutate(Gene = str_replace(Gene, ",.*$", ""))
+    mutate(Gene = str_replace(Gene, ",.*$", "")) %>%
+    separate_rows(
+      Gene,
+      sep = "\\s+"
+    )
   
   if(to_lower) {
     res <- mutate(res, Gene = str_to_sentence(Gene))
