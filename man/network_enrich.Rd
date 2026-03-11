@@ -11,7 +11,6 @@ network_enrich(
   foldChange = NULL,
   cex = 0.7,
   cex_node = 5.5 * cex,
-  node_label = "all",
   regex = NULL,
   width = 20,
   FDR = 0.05,
@@ -28,17 +27,11 @@ network_enrich(
 
 \item{col_highlight}{Color for highlighted nodes.}
 
-\item{foldChange}{Fold Change of nodes, the default value is NULL. 
-If the user provides the Fold Change value of the nodes, 
-it can be used to set the color of the gene node.
-Will be removed in the next version.}
+\item{foldChange}{numeric values to color the item (e.g, foldChange of gene expression values)}
 
 \item{cex}{Double for the scaling factor for all elements.}
 
 \item{cex_node}{Double for the scaling factor for gene node sizes.}
-
-\item{node_label}{Select which labels to be displayed.
-one of 'category', 'gene', 'all'(the default) and 'none'.}
 
 \item{regex}{Regular expression pattern to filter by pathway names.}
 
@@ -52,19 +45,19 @@ one of 'category', 'gene', 'all'(the default) and 'none'.}
 
 \item{power}{Integer for exponent for color gradient transformation.}
 
-\item{...}{Additional arguments passed to \code{enrichplot::cnetplot}.}
+\item{...}{Additional arguments passed to \code{ggtangle::cnetplot}.}
 }
 \value{
 A ggplot object showing the gene-concept network.
 }
 \description{
-Wrapper around \code{enrichplot::cnetplot} for enhanced visualization of
+Wrapper around \code{ggtangle::cnetplot} for enhanced visualization of
 gene-concept networks from enrichment analysis results. Provides customization
 options for node appearance, highlighting specific genes, and improved
 aesthetics.
 }
 \details{
-This function extends \code{enrichplot::cnetplot} with:
+This function extends \code{ggtangle::cnetplot} with:
 \itemize{
 \item Automatic filtering by FDR and term description patterns
 \item Enhanced label formatting (wrapping, truncation)
@@ -95,5 +88,5 @@ network_enrich(
 
 }
 \seealso{
-\code{\link[enrichplot]{cnetplot}}
+\code{\link[ggtangle]{cnetplot}}
 }

@@ -10,6 +10,7 @@ volcano_plot(
   title = NULL,
   legend = "right",
   cex = 1.5,
+  cex_genes = 6,
   fc_threshold = 0.5,
   p_threshold = 0.05,
   force = 10,

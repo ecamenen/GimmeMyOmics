@@ -4,7 +4,17 @@
 \alias{print_dea}
 \title{Print Differential Expression Analysis (DEA) Results}
 \usage{
-print_dea(x, base = 2, ...)
+print_dea(
+  x,
+  base = 2,
+  metadata = TRUE,
+  dea = NULL,
+  description = FALSE,
+  database = "entrezgene_id",
+  filtered = TRUE,
+  var = "ensembl_gene_id",
+  ...
+)
 }
 \arguments{
 \item{x}{A \code{data.frame} or \code{tibble} containing DEA results. Expected columns include:

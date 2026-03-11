@@ -9,7 +9,10 @@ format_dea(
   metadata_genes = NULL,
   fc_threshold = 1,
   p_threshold = 0.05,
-  name_id = "ensembl_gene_id"
+  name_id = "ensembl_gene_id",
+  filtered = TRUE,
+  contrast = NULL,
+  dea = NULL
 )
 }
 \arguments{

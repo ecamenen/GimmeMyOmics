@@ -11,6 +11,7 @@ top_genes(
   n = Inf,
   return_rank = FALSE,
   rank_by = "rank_pfc",
+  expression = FALSE,
   f = identity
 )
 }

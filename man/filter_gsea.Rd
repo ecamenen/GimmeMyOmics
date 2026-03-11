@@ -15,7 +15,7 @@ filter_gsea(x, regex = NULL, FDR = 0.05, width = 500, negate = FALSE)
 
 \item{width}{Integer for maximum width for pathway name wrapping.}
 
-\item{negate}{If \code{TRUE}, return non-matching elements.}
+\item{negate}{If \code{TRUE}, inverts the resulting boolean vector.}
 }
 \value{
 Returns a filtered and formatted \code{enrichResult} or \code{gseaResult} object

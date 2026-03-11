@@ -10,9 +10,8 @@ map_enrich(
   width = 20,
   FDR = 0.05,
   cex = 1,
-  cluster.params = list(cluster = TRUE, legend = TRUE, label_words_n = 2),
-  cex.params = list(category_label = 0.7 * cex, line = 0.5),
-  alpha = 0.1,
+  nWords = 2,
+  size_edge = 0.5,
   showCategory = 15,
   colour = c(palette_discrete()[1], "gray50", palette_discrete()[2]),
   method = "clusterProfiler",
@@ -30,48 +29,21 @@ map_enrich(
 
 \item{cex}{Double for the scaling factor for all elements.}
 
-\item{cluster.params}{list, the parameters to control the attributes of highlighted nodes and edges.
-see the cluster.params in the following.
-cluster.params control the attributes of highlight, it can be referred to the following parameters:
-    \itemize{
-        \item \code{cluster} a logical, if TRUE, group the category.
-        \item \code{method} function of Clustering method, such as stats::kmeans(the default),
-        cluster::clara, cluster::fanny or cluster::pam.
-        \item \code{n} Numeric, the number of clusters, 
-        the default value is square root of the number of nodes.
-        \item \code{legend} Logical, if TRUE, the grouping legend will be displayed.
-        The default is FALSE.
-        \item \code{label_style} style of group label, one of "shadowtext" and "ggforce".
-        \item \code{label_words_n} Numeric, the number of words in the cluster tags, the default value is 4.
-        \item \code{label_format} a numeric value sets wrap length, alternatively a
-        custom function to format axis labels.
-    }}
+\item{nWords}{Numeric, the number of words in the cluster tags, the default value is 4.}
 
-\item{cex.params}{list, the parameters to control the edge.
-see the cex.params in the following.
-cex.params control the attributes of edge, it can be referred to the following parameters:
-    \itemize{
-        \item \code{category_node} Number indicating the amount by which plotting category
-        nodes should be scaled relative to the default.
-        \item \code{category_label} Scale of category node label size. 
-        \item \code{line} Scale of line width.
-        \item \code{pie2axis} It is used to adjust the relative size of the pie chart on the coordinate axis, 
-        the default value is 1.
-        \item \code{label_group} Numeric, scale of group labels size, the default value is 1.
-    }}
+\item{size_edge}{relative size of edge width}
 
-\item{alpha}{Double for transparency of edges.}
-
-\item{showCategory}{A number or a vector of terms. If it is a number, 
-the first n terms will be displayed. If it is a vector of terms, 
+\item{showCategory}{A number or a vector of terms. If it is a number,
+the first n terms will be displayed. If it is a vector of terms,
 the selected terms will be displayed.}
 
 \item{colour}{Color palette for gradient coloring.}
 
-\item{method}{A character string specifying the enrichment analysis method. Options are:
+\item{method}{A character string specifying the package of the enrichment analysis method.
+Options are:
 \itemize{
-\item \code{enrichR} package;
-\item \code{clusterProfiler} package.
+\item \code{enrichR};
+\item \code{clusterProfiler}.
 }}
 
 \item{...}{Additional arguments passed to \code{enrichplot::emapplot}.}
@@ -80,7 +52,7 @@ the selected terms will be displayed.}
 A ggplot object showing the enrichment map.
 }
 \description{
-Wrapper around \code{enrichplot::emapplot} for creating enrichment maps from
+Wrapper around \code{emapplot} for creating enrichment maps from
 enrichment analysis results. Provides customization options for clustering,
 node appearance, and improved aesthetics.
 }

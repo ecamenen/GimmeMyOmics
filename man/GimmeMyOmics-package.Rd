@@ -4,9 +4,9 @@
 \name{GimmeMyOmics-package}
 \alias{GimmeMyOmics}
 \alias{GimmeMyOmics-package}
-\title{GimmeMyOmics: Omics data analysis}
+\title{GimmeMyOmics: Omics Data Utilities}
 \description{
-GimmeMyOmics is an integrated R package for high-throughput omics analysis, covering bulk RNA-seq, single-cell RNA-seq, and ATAC-seq. It provides streamlined workflows for differential expression analysis, functional enrichment, and network-based annotation. Designed for both bulk and single-cell data, it supports clustering, trajectory inference, and cell-type annotation while enabling chromatin accessibility studies through peak calling and regulatory element analysis. The package also offers quality control and preprocessing tools, converting kallisto.h5 outputs into transcript- and gene-level count matrices, assessing alignment quality, and extracting fastqc and fastp metrics with detailed visual summaries. Its visualization suite generates publication-ready volcano plots, heatmaps, UMAP projections, violin plots, and pathway graphs, facilitating data exploration. Built on standard R packages like Seurat, DESeq2, and clusterProfiler, GimmeMyOmics simplifies multi-omics workflows, making complex bioinformatics analyses more efficient, reproducible, and accessible.
+A comprehensive toolkit for high-throughput omics analysis. It provides functions for differential expression analysis, functional enrichment, and network-based annotation. The package also includes a variety of visualization tools, such as volcano plots, heatmaps, violin plots, and pathway diagrams, to facilitate data exploration and interpretation.
 }
 \author{
 \strong{Maintainer}: Etienne Camenen \email{etienne.camenen@gmail.com}
