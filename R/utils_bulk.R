@@ -329,7 +329,7 @@ volcano_plot <- function(
         scale_fill_manual(values = c("Up-regulated" = "#FB9A99", "Down-regulated" = "#A6CEE3", "ns" = "gray80")) +
         scale_x_continuous(trans = trans_new("lognx", log_func, exp_func), breaks = c(rev(breaks_x) * -1, breaks_x) %>% round(1), labels = format_labels) +
         scale_y_continuous(trans = trans_new("log10x", function(x) -log10(x), function(x) 10^(-x)), breaks = breaks_y, labels = format_labels) +
-        labs(title, fill = "DEG", x = "Fold change", y = "P-adjusted") +
+        labs(title = title, fill = "DEG", x = "Fold change", y = "P-adjusted") +
         theme_classic() %>%
         theme_bulk(cex) +
         theme(legend.position = legend)
