@@ -315,7 +315,6 @@ enrichment2 <- filter_gsea(
 ```{r}
 map_enrich(
     enrichment,
-    group = FALSE,
     regex = pathway_keywords()$immunity_additional,
     showCategory = 50,
     size_edge = 0.5,
