@@ -474,34 +474,50 @@ pathway_keywords <- function() {
     l[["cytokine"]] <- c("(nterleukins?)|(IL-?\\d{1,2})", "(nterferon)|(IFN[ABG])", "(rostaglandin)|([Aa]rachidonic)|(icosa)|([Ll]eukotriene)|([Dd]ocosahexaenoic)|([Ii]cosapentaenoic)|([Ll]ipoxin)|(esolvin)")
     l[["cytokine_full"]] <- c(l[["cytokine"]], "(umor [Nn]ecrosis factor)|(TNF)|(NF-k)")
     l[["immunity"]] <- c(l[["cell"]], l[["cytokine_full"]], "(omplement)|([^ ]C2 )", "(oll-like)|(TLR )", "mTORC1", "(Fc gamma)|(FCG)", "etalloproteinas") %>% unique()
-    l[["immunity_additional"]] <- c(l[["immunity"]],  "STAT[ 35]", "AGE", "(PUMA)|(TP53)|( p53)", "([Ii]nflamm)|([Ii]mmun)", "hemokine", "mhc",  "phago((cytosis)|(some))", "[Ll]eukocyte", "[Mm]yeloid", "[Cc]ytokine[^sis]", "ranulocyte", "[Ll]ympho", "[Hh]emopo")
+    l[["immunity_additional"]] <- c(l[["immunity"]],  "STAT[ 35]", "AGE", "(PUMA)|(TP53)|( p53)", "([Ii]nflamm)|([Ii]mmun)", "hemokine", "mhc",  "phago((cytosis)|(some))", "[Ll]eukocyte", "[Mm]yeloid", "[Cc]ytokine[^sis]", "ranulocyte", "[Ll]ympho", "[Hh]emopo" , "([Hh]eme)|(rythro)|(ed [Bb]lood)")
     l[["immunity_full"]]  <- c(l[["immunity_additional"]], "[Ll]upus", "(steo[cb]last)|([Bb]one)|(keletal)|([Oo]ssification)", "[Aa]rthrit", "[Gg]lucocorticoid", "[Aa]cute")
     
     l[["cell_cycle"]] <- c(
-      "spindle",
-      "mitotic",
+      "[Ss]pindle",
+      "[Mm]itotic",
       "G2",
       "G1",
-      "chromati",
-      "meiosis",
-      "chromosom",
+      "[Cc]hromati",
+      "[Mm]eiosis",
+      "[Cc]hromosom",
       "DNA",
-      "[cC]ell cycle",
-      "organelle",
-      "cytokinesis",
-      "((nuclear)|(cell)) division",
-      "tubule",
-      "nucleosome",
+      "[cC]ell [Cc]ycle",
+      "[Oo]rganelle",
+      "[Cc]ytokinesis",
+      "(([Nn]uclear)|([Cc]ell)) [Dd]ivision",
+      "[Tt]ubule",
+      "[Nn]ucleosome",
       "ATP",
       "NAD",
-      "kinetochore",
-      "double-strand",
-      "recombin",
+      "[Kk]inetochore",
+      "[Dd]ouble-[Ss]trand",
+      "[Rr]ecombin",
       "CMG",
       "naphase",
       "hromocenter",
       "ronucleus",
-      "idbody"
+      "idbody",
+      "[Ss]plicing",
+      "[Tt]elomer",
+      "RNA [Ss]plicing",
+      "RNA [Pp]rocessing",
+      "[Ss]umoylation",
+      "[Gg]ene [Ee]xpression",
+      "RNA [Tt]ransport",
+      "((RNA)|([Nn]uclear)) [Ee]xport",
+      "[Cc]entromere",
+      "RNA [Cc]atabolic",
+      "RNA [Bb]iosynthetic",
+      "[Tt]ransferas",
+      "RNA [Mm]etabolic [Pp]rocess",
+      "[rR]eplication",
+      "[Cc]haperone"
+      
     )
     return(l)
 }
