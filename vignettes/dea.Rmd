@@ -22,6 +22,7 @@ library("DESeq2")
 library("pheatmap")
 library("magrittr")
 library("RColorBrewer")
+library("ashr")
 # source("R/utils_theme.R")
 # source("R/utils_bulk.R")
 genome_species <- "hsapiens"
@@ -164,13 +165,18 @@ glimmaMA(dea)
 
 # Contrasts
 ```{r}
+contrast <- c(
+  colnames(metadata_samples)[1],
+  levels(pull(metadata_samples, 1))[seq(2)]
+)
 # dea_raw <- results(dea, alpha = 1-1e-10) %>%
 dea_raw <- lfcShrink(
     dea,
-    contrast = c(colnames(metadata_samples)[1], levels(pull(metadata_samples, 1))),
+    contrast = contrast,
     type = "ashr",
     quiet = TRUE
 )
+
 summary(dea_raw)
 
 # saveRDS(dea_raw, file = file.path(path, paste0("dea_contrast", project_name, ".RDS")))
