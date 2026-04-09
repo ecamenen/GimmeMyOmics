@@ -3,6 +3,7 @@
 export(bind_gsea)
 export(custom_upset_barplot)
 export(dea_limma)
+export(extract_combination)
 export(extract_pathway_genes)
 export(filter_gsea)
 export(format_dea)

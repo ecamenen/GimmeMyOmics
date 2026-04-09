@@ -679,40 +679,40 @@ plot_heatmap <- function(
 }
 
 #' @export
-custom_upset_barplot <- function(gene_lists, top_n = Inf, only_intersect = TRUE, ratio = 2, breaks = waiver(), width = 50) {
-  # Convert to long format
+extract_combination <- function(gene_lists, top_n = Inf) {
   long_df <- gene_lists %>%
     tibble::enframe(name = "group", value = "gene") %>%
     unnest_longer(gene)
   
-  # Create binary matrix
   binary_df <- long_df %>%
     mutate(present = 1) %>%
     pivot_wider(names_from = group, values_from = present, values_fill = 0)
   
-  # Identify group columns
   group_cols <- setdiff(names(binary_df), "gene")
   
-  # Generate combinations
   binary_df <- binary_df %>%
     rowwise() %>%
     mutate(combination = paste(group_cols[which(c_across(all_of(group_cols)) == 1)], collapse = " & ")) %>%
     ungroup()
   
-  # Count intersection sizes
   intersection_counts <- binary_df %>%
     dplyr::count(combination, sort = TRUE)
   
-  # Genes associated with each combination
   gene_labels <- binary_df %>%
     filter(combination %in% intersection_counts$combination) %>%
     group_by(combination) %>%
     summarise(genes = paste(gene, collapse = ", "), .groups = "drop")
   
-  df_plot <- left_join(intersection_counts, gene_labels, by = "combination") %>%
+  left_join(intersection_counts, gene_labels, by = "combination") %>%
     mutate(n_groups = str_count(combination, " & ") + 1) %>%
     arrange(desc(n_groups), desc(n)) %>%
     slice_head(n = top_n)
+}
+
+#' @export
+custom_upset_barplot <- function(gene_lists, top_n = Inf, only_intersect = TRUE, ratio = 2, breaks = waiver(), width = 50) {
+
+  df_plot <- extract_combination(gene_lists, top_n)
   
   if (isTRUE(only_intersect)) {
     df_plot <- filter(df_plot, str_detect(combination, " & "))
@@ -720,9 +720,7 @@ custom_upset_barplot <- function(gene_lists, top_n = Inf, only_intersect = TRUE,
   if (only_intersect == "inverse") {
     df_plot <- filter(df_plot, !str_detect(combination, " & "))
   }
-  
-  
-  # Assign row index (top = highest n_groups)
+
   df_plot <- df_plot %>%
     mutate(row_id = row_number())
   
@@ -740,7 +738,7 @@ custom_upset_barplot <- function(gene_lists, top_n = Inf, only_intersect = TRUE,
     labs(title = NULL, x = NULL, y = NULL, fill = "# Sets") +
     theme_minimal() +
     expand_limits(y = max(df_plot$n) + max(df_plot$n) / ratio) +
-    theme(legend.position = "none")
+    guides(fill = guide_legend(reverse = TRUE))
 }
 
 #' @export
