@@ -474,7 +474,7 @@ pathway_keywords <- function() {
     l[["cytokine"]] <- c("(nterleukins?)|(IL-?\\d{1,2})", "(nterferon)|(IFN[ABG])", "(rostaglandin)|([Aa]rachidonic)|(icosa)|([Ll]eukotriene)|([Dd]ocosahexaenoic)|([Ii]cosapentaenoic)|([Ll]ipoxin)|(esolvin)")
     l[["cytokine_full"]] <- c(l[["cytokine"]], "(umor [Nn]ecrosis factor)|(TNF)|(NF-k)")
     l[["immunity"]] <- c(l[["cell"]], l[["cytokine_full"]], "(omplement)|([^ ]C2 )", "(oll-like)|(TLR )", "mTORC1", "(Fc gamma)|(FCG)", "etalloproteinas") %>% unique()
-    l[["immunity_additional"]] <- c(l[["immunity"]],  "STAT[ 35]", "AGE", "(PUMA)|(TP53)|( p53)", "([Ii]nflamm)|([Ii]mmun)", "hemokine", "mhc",  "phago((cytosis)|(some))", "[Ll]eukocyte", "[Mm]yeloid", "[Cc]ytokine[^sis]", "ranulocyte", "[Ll]ympho", "[Hh]emopo" , "([Hh]eme)|(rythro)|(ed [Bb]lood)")
+    l[["immunity_additional"]] <- c(l[["immunity"]],  "STAT[ 35]", "AGE", "(PUMA)|(TP53)|( p53)", "([Ii]nflamm)|([Ii]mmun)", "hemokine", "mhc",  "phago((cytosis)|(some))", "[Ll]eukocyte", "[Mm]yeloid", "[Cc]ytokine[^sis]", "ranulocyte", "[Ll]ympho", "[Hh]emopo" , "([Ee]rythro)|([Hh]eme)|([Rr]ed [Bb]lood)|([Mm]egakaryocyte)|([Hh]emangioblast)")
     l[["immunity_full"]]  <- c(l[["immunity_additional"]], "[Ll]upus", "(steo[cb]last)|([Bb]one)|(keletal)|([Oo]ssification)", "[Aa]rthrit", "[Gg]lucocorticoid", "[Aa]cute")
     
     l[["cell_cycle"]] <- c(

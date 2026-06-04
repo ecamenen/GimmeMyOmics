@@ -406,7 +406,7 @@ volcano_plot <- function(
 #'
 #' @export
 print_dea <- function(x, base = 2, metadata = TRUE, dea = NULL, description = FALSE, database = "entrezgene_id", filtered = TRUE, var = "ensembl_gene_id", ...) {
-    func <- if (base == 2) function(x) 2^x else exp
+    func <- if (base == 1) exp else function(x) base^x
     res <- top_genes(x, n = Inf, fc_threshold = 0, p_threshold = 1, ...) %>%
       rename(
         `P-adjusted` = "padj",
