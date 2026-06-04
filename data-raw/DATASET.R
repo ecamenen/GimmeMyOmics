@@ -39,6 +39,25 @@ biomart_annotation <- map(
 
 use_data(biomart_annotation, overwrite = TRUE)
 
+biomart_t2g <- map(
+  genome_species,
+  ~ {
+    db_annot <- useEnsembl(
+      biomart = "genes",
+      dataset = paste0(., "_gene_ensembl"),
+      version = genome_version
+    )
+    
+    getBM(
+      attributes = c("ensembl_transcript_id", "ensembl_gene_id"),
+      mart = db_annot
+    ) %>%
+      as_tibble()
+  }) %>%
+  set_names(paste(genome_species, genome_version, sep = "_"))
+
+use_data(biomart_t2g, overwrite = TRUE)
+
 ---
   
 surface_genes <- map(
